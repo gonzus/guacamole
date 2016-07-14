@@ -26,10 +26,10 @@ main: $(O_FILES)
 	$(CC) $(ALL_FLAGS) $^ -o $@
 
 lexer.c lexer.h: lexer.l
-	flex lexer.l
+	flex --bison-locations lexer.l
 
 parser.c parser.h: parser.y lexer.h
-	bison parser.y
+	bison --locations parser.y
 
 lexer.o: lexer.c parser.h
 parser.o: parser.c parser.h lexer.h

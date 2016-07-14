@@ -4,13 +4,14 @@
 #include "parser.h"
 #include "lexer.h"
 
-int yyerror(Expression **expr, yyscan_t scanner, const char *msg) {
+int yyerror(YYLTYPE* yyloc, Expression **expr, yyscan_t scanner, const char *msg) {
     fprintf(stderr, "ERROR: %s\n", msg);
     return 0;
 }
 
 %}
 
+%locations
 %code requires {
 
 #ifndef YY_TYPEDEF_YY_SCANNER_T
