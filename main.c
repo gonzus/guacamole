@@ -1,71 +1,43 @@
 #include <stdio.h>
-#include "expr.h"
+#include "ast.h"
 #include "parser.h"
 #include "lexer.h"
 
-static Expression* parse(const char* text)
+static void process(FILE* fp)
 {
-    if (!text) {
-        fprintf(stderr, "Could not parse null string\n");
-        return NULL;
-    }
-
+    // yyin = fp;
     yyscan_t scanner;
     if (yylex_init(&scanner)) {
         fprintf(stderr, "Could not initialize lexer\n");
-        return NULL;
+        return;
     }
 
-    Expression* expr = 0;
-    YY_BUFFER_STATE state = yy_scan_string(text, scanner);
-    if (yyparse(&expr, scanner)) {
-        fprintf(stderr, "Could not parse [%s]\n", text);
-        expr = 0;
+    AST* ast = ast_create();
+    if (yyparse(&ast, scanner)) {
+        fprintf(stderr, "Could not parse input\n");
+    }
+    else {
+        ast_dump(ast, stdout);
     }
 
-    yy_delete_buffer(state, scanner);
     yylex_destroy(scanner);
-    return expr;
-}
-
-static int evaluate(Expression* expr)
-{
-    if (!expr) {
-        fprintf(stderr, "Could not evaluate null expression\n");
-        return 0;
-    }
-
-    switch (expr->type) {
-        case EXP_VALUE:
-            return expr->val.value;
-        case EXP_OP_MUL:
-            return evaluate(expr->op.left) * evaluate(expr->op.right);
-        case EXP_OP_ADD:
-            return evaluate(expr->op.left) + evaluate(expr->op.right);
-        default:
-            fprintf(stderr, "Could not evaluate invalid expression (type %d)\n",
-                    expr->type);
-            return 0;
-    }
-}
-
-static int process(const char* text)
-{
-    int count = 0;
-    for (Expression* expr = parse(text); expr; expr = expr->next) {
-        printf("Evaluating [%p]\n", expr);
-        int result = evaluate(expr);
-        printf("%s = %d\n", text, result);
-        ++count;
-    }
-    deleteExpression(expr);
-    return count;
 }
 
 int main(int argc, char* argv[])
 {
-    for (int j = 1; j < argc; ++j) {
-        process(argv[j]);
+    if (argc <= 1) {
+        process(stdin);
+    }
+    else {
+        for (int j = 1; j < argc; ++j) {
+            FILE* fp = fopen(argv[j], "r");
+            if (!fp) {
+                fprintf(stderr, "Could not open %s\n", argv[j]);
+                continue;
+            }
+            process(fp);
+            fclose(fp);
+        }
     }
 
     return 0;

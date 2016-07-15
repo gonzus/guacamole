@@ -1,9 +1,12 @@
 %{
 
 #include <stdio.h>
-#include "expr.h"
+#include "ast.h"
+#include "node.h"
+#include "symtab.h"
 #include "parser.h"
 
+// Make sure we keep the location (line/col) updated
 static void update_loc(YYLTYPE *loc, char *txt)
 {
     loc->first_line = loc->last_line;
@@ -18,37 +21,59 @@ static void update_loc(YYLTYPE *loc, char *txt)
         }
     }
 }
-
 #define YY_USER_ACTION update_loc(yylloc, yytext);
+
 %}
 
+/* Define the desired output file names */
+%option outfile="lexer.c" header-file="lexer.h"
+
+/* track line count in yylineno */
 %option yylineno
 
-%option outfile="lexer.c" header-file="lexer.h"
-%option warn nodefault
+/* generate warnings */
+%option warn
 
-%option reentrant noyywrap never-interactive nounistd
+/* suppress default rule to ECHO unmatched text */
+%option nodefault
+
+/* generate a batch (not an interactive) scanner ??? */
+%option never-interactive
+
+/* do not include <unistd.h> */
+%option nounistd
+
+/* scanner for bison pure parser */
 %option bison-bridge
 
-SEMICOLON   ";"
-LPAREN      "("
-RPAREN      ")"
-PLUS        "+"
-MULTIPLY    "*"
+/* include yylloc support */
+%option bison-locations
 
-NUMBER      [0-9]+
-WS          [ \r\n\t]*
+/* generate a reentrant C scanner */
+%option reentrant
+
+/* ??? */
+%option noyywrap
+
+INTEGER     [0-9]+
+REAL        [0-9]+\.([0-9]+)?|([0-9]+)?\.[0-9]+
 
 %%
 
-{WS}            { /* Skip blanks */ }
-{NUMBER}        { sscanf(yytext, "%d", &yylval->value); return TOKEN_NUMBER; }
+[ \r\n\t]+      { /* Skip blanks */ }
 
-{MULTIPLY}      { return TOKEN_MULTIPLY;  }
-{PLUS}          { return TOKEN_PLUS;      }
-{LPAREN}        { return TOKEN_LPAREN;    }
-{RPAREN}        { return TOKEN_RPAREN;    }
-{SEMICOLON}     { return TOKEN_SEMICOLON; }
-.               {  }
+{INTEGER}       { sscanf(yytext, "%ld", &yylval->vali); return INTEGER; }
+{REAL}          { sscanf(yytext, "%lf", &yylval->valr); return REAL;    }
+
+while           { return WHILE; }
+if              { return IF;    }
+else            { return ELSE;  }
+print           { return PRINT; }
+
+[a-zA-Z_][0-9a-zA-Z_]+    { yylval->vals = strdup(yytext); return STRING; }
+
+[-+*/();]       { return yytext[0]; }
+
+.               { yyerror(yylloc_param, ast, yyscanner, "WTF? Unknown character");  }
 
 %%

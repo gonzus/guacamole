@@ -1,4 +1,11 @@
-C_FILES    = lexer.c parser.c expr.c main.c
+C_FILES    = \
+	lexer.c \
+	parser.c \
+	expr.c \
+	node.c \
+	symtab.c \
+	ast.c \
+	main.c \
 
 CC         = cc
 CPPFLAGS  +=
@@ -34,6 +41,9 @@ parser.c parser.h: parser.y lexer.h
 lexer.o: lexer.c parser.h
 parser.o: parser.c parser.h lexer.h
 expr.o: expr.c parser.h lexer.h
+node.o: node.c
+symtab.o: symtab.c
+ast.o: ast.c
 main.o: main.c
 
 clean:
