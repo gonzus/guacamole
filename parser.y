@@ -20,21 +20,29 @@ int yyerror(YYLTYPE* yyllocp,
 
 %}
 
+/* generate yytname, a table of token names */
 %token-table
 
-%define api.pure full
+/* generate and pass location information (line:col) */
 %locations
+
+%define api.pure full
+
+/* pass these parameters to lexer and parser */
 %param   { AST** ast }
 %param   { yyscan_t yyscanner }
 
+/* add this early to the generated header file */
 %code requires {
 
 #ifndef YY_TYPEDEF_YY_SCANNER_T
 #define YY_TYPEDEF_YY_SCANNER_T
 typedef void* yyscan_t;
 #endif
+
 }
 
+/* add this later to the generated header file */
 %code provides {
 
 #define YY_DECL \
@@ -52,12 +60,11 @@ int yyerror(YYLTYPE* yyllocp,
 const char* token_name(int token);
 }
 
+/* name outputs */
 %output  "parser.c"
 %defines "parser.h"
 
-
-
-// Possible value types for terminals and nonterminals
+/* Possible value types for terminals and nonterminals */
 %union {
     long vali;
     double valr;
@@ -66,25 +73,27 @@ const char* token_name(int token);
     Node* node;
 }
 
-// Terminals without precedence but with a specific value type
+/* Terminals without precedence but with a specific value type */
 %token <vali> INTEGER
 %token <valr> REAL
 %token <vals> STRING
 %token <symb> IDENTIFIER
 
+/* Terminals for reserved words, with some precedende for dangling else */
 %token WHILE IF PRINT
 %nonassoc NO_ELSE
 %nonassoc ELSE
 
-// Terminals with a specific precedence
+/* Terminals with a specific precedence */
 %left GT LT GE LE EQ NE
 %left '+' '-'
 %left '*' '/'
 %nonassoc UMINUS
 
-// Nonterminals, with their corresponding types
+/* Nonterminals, with their corresponding types */
 %type <node> stmt expr stmt_list
 
+/* Explicitly define starting rule */
 %start program
 
 %%
@@ -130,6 +139,7 @@ expr
 
 %%
 
+/* Provide a function to get a token name given its number */
 const char* token_name(int token)
 {
     return yytname[YYTRANSLATE(token)];

@@ -55,8 +55,9 @@ static void update_loc(YYLTYPE *loc, char *txt)
 /* ??? */
 %option noyywrap
 
-/* ============================== */
+/* some macros to makes things more readable */
 
+BLANK       [ \r\n\t]
 NUMBER      [0-9]
 ALPHA       [a-zA-Z_]
 ALNUM       [a-zA-Z_0-9]
@@ -66,7 +67,7 @@ REAL        {NUMBER}+\.{NUMBER}*|{NUMBER}*\.{NUMBER}+
 
 %%
 
-[ \r\n\t]+      { /* Skip blanks */ }
+{BLANK}+        { /* Skip blanks */ }
 
 {INTEGER}       { sscanf(yytext, "%ld", &yylval->vali); return INTEGER; }
 {REAL}          { sscanf(yytext, "%lf", &yylval->valr); return REAL;    }
@@ -87,6 +88,10 @@ REAL        {NUMBER}+\.{NUMBER}*|{NUMBER}*\.{NUMBER}+
 
 [-+*/(){}=;]    { return yytext[0]; }
 
-.               { yyerror(yylloc_param, ast, yyscanner, "WTF? Unknown character");  }
+.               {
+                    char msg[1024];
+                    sprintf(msg, "WTF? Unknown character [%c]", yytext[0]);
+                    yyerror(yylloc_param, ast, yyscanner, msg);
+                }
 
 %%
