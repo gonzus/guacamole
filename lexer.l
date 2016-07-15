@@ -55,8 +55,14 @@ static void update_loc(YYLTYPE *loc, char *txt)
 /* ??? */
 %option noyywrap
 
-INTEGER     [0-9]+
-REAL        [0-9]+\.([0-9]+)?|([0-9]+)?\.[0-9]+
+/* ============================== */
+
+NUMBER      [0-9]
+ALPHA       [a-zA-Z_]
+ALNUM       [a-zA-Z_0-9]
+
+INTEGER     {NUMBER}+
+REAL        {NUMBER}+\.{NUMBER}*|{NUMBER}*\.{NUMBER}+
 
 %%
 
@@ -70,7 +76,7 @@ if              { return IF;    }
 else            { return ELSE;  }
 print           { return PRINT; }
 
-[a-zA-Z_][0-9a-zA-Z_]*    {
+{ALPHA}{ALNUM}* {
                     SymTab* symtab = (*ast)->symtab;
                     Symbol* s = symtab_lookup(symtab, yytext, IDENTIFIER, 1);
                     yylval->symb = s;
