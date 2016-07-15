@@ -71,11 +71,6 @@ REAL        {NUMBER}+\.{NUMBER}*|{NUMBER}*\.{NUMBER}+
 {INTEGER}       { sscanf(yytext, "%ld", &yylval->vali); return INTEGER; }
 {REAL}          { sscanf(yytext, "%lf", &yylval->valr); return REAL;    }
 
-while           { return WHILE; }
-if              { return IF;    }
-else            { return ELSE;  }
-print           { return PRINT; }
-
 {ALPHA}{ALNUM}* {
                     SymTab* symtab = (*ast)->symtab;
                     Symbol* s = symtab_lookup(symtab, yytext, IDENTIFIER, 1);

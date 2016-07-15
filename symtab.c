@@ -40,21 +40,21 @@ Symbol* symtab_lookup(SymTab* symtab,
 {
     unsigned long h = hash(name);
     int p = h % symtab->size;
-    for (Symbol* s = symtab->buckets[p]; s != 0; s = s->next ) {
-        if (s->type == type &&
-            strcmp(s->name, name) == 0) {
+    Symbol* sym = 0;
+    for (sym = symtab->buckets[p]; sym != 0; sym = sym->next) {
+        if (strcmp(sym->name, name) == 0) {
             break;
         }
     }
-    if (!s && create) {
-        s = (Symbol*) malloc(sizeof(Symbol));
-        s->name = strdup(name);
-        s->type = type;
-        s->next = symtab->buckets[p];
-        symtab->buckets[p] = s;
+    if (!sym && create) {
+        sym = (Symbol*) malloc(sizeof(Symbol));
+        sym->name = strdup(name);
+        sym->type = type;
+        sym->next = symtab->buckets[p];
+        symtab->buckets[p] = sym;
         ++symtab->used;
     }
-    return s;
+    return sym;
 }
 
 void symtab_dump(SymTab* symtab, FILE* fp)
