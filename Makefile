@@ -1,7 +1,6 @@
 C_FILES    = \
 	lexer.c \
 	parser.c \
-	expr.c \
 	node.c \
 	symtab.c \
 	ast.c \
@@ -40,7 +39,6 @@ parser.c parser.h: parser.y lexer.h
 
 lexer.o: lexer.c parser.h
 parser.o: parser.c parser.h lexer.h
-expr.o: expr.c parser.h lexer.h
 node.o: node.c
 symtab.o: symtab.c
 ast.o: ast.c
