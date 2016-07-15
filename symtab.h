@@ -5,6 +5,8 @@
  * Data structure holding a symbol table.
  */
 
+#include <stdio.h>
+
 typedef struct Symbol {
     char* name;
     int type;
@@ -24,5 +26,6 @@ Symbol* symtab_lookup(SymTab* symtab,
                       const char* name,
                       int type,
                       int create);
+void symtab_dump(SymTab* symtab, FILE* fp);
 
 #endif

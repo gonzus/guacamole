@@ -1,13 +1,13 @@
 #include <stdarg.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "symtab.h"
+#include "ast.h"
+#include "parser.h"
 #include "node.h"
 
 Node* node_vali(long value)
 {
-    fprintf(stderr, "Node VALI[%ld]\n", value);
     Node* node = (Node*) malloc(sizeof(Node));
     node->type = NODE_VALI;
     node->vali = value;
@@ -16,7 +16,6 @@ Node* node_vali(long value)
 
 Node* node_valr(double value)
 {
-    fprintf(stderr, "Node VALR[%lf]\n", value);
     Node* node = (Node*) malloc(sizeof(Node));
     node->type = NODE_VALR;
     node->valr = value;
@@ -25,7 +24,6 @@ Node* node_valr(double value)
 
 Node* node_vals(const char* value)
 {
-    fprintf(stderr, "Node VALS[%s]\n", value);
     Node* node = (Node*) malloc(sizeof(Node));
     node->type = NODE_VALS;
     node->vals = strdup(value);
@@ -34,7 +32,6 @@ Node* node_vals(const char* value)
 
 Node* node_symb(Symbol* symb)
 {
-    fprintf(stderr, "Node SYMB[%d:%s]\n", symb->type, symb->name);
     Node* node = (Node*) malloc(sizeof(Node));
     node->type = NODE_SYMB;
     node->symb = symb;
@@ -43,7 +40,6 @@ Node* node_symb(Symbol* symb)
 
 Node* node_oper(int oper, int nchildren, ...)
 {
-    fprintf(stderr, "Node OPER[%d:%d]\n", oper, nchildren);
     Node* node = (Node*) malloc(sizeof(Node));
     node->type = NODE_OPER;
 
@@ -82,4 +78,53 @@ void node_destroy(Node* node)
             break;
     }
     free(node);
+}
+
+void node_dump(Node* node, int parent, int level, FILE* fp)
+{
+    if (!node) {
+        return;
+    }
+
+    int delta = 2;
+    if (parent == ';' &&
+        node->type == NODE_OPER &&
+        node->oper->oper == ';') {
+        delta = 0;
+    }
+    level += delta;
+
+    if (delta) {
+        for (int j = 0; j < level; ++j) {
+            putc(' ', fp);
+        }
+    }
+
+    switch (node->type) {
+        case NODE_VALI:
+            fprintf(fp, "VALI[%ld]\n", node->vali);
+            break;
+
+        case NODE_VALR:
+            fprintf(fp, "VALR[%lf]\n", node->valr);
+            break;
+
+        case NODE_VALS:
+            fprintf(fp, "VALS[%s]\n", node->vals);
+            break;
+
+        case NODE_SYMB:
+            fprintf(fp, "SYMB[%s:%s]\n", token_name(node->symb->type), node->symb->name);
+            break;
+
+        case NODE_OPER:
+            if (delta) {
+                fprintf(fp, "OPER[%s]\n", token_name(node->oper->oper));
+            }
+            for (int j = 0; j < node->oper->nchildren; ++j) {
+                node_dump(node->oper->children[j], node->oper->oper, level, fp);
+            }
+            break;
+    }
+    level -= delta;
 }

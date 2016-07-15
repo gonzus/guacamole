@@ -57,6 +57,28 @@ Symbol* symtab_lookup(SymTab* symtab,
     return s;
 }
 
+void symtab_dump(SymTab* symtab, FILE* fp)
+{
+    if (!symtab) {
+        return;
+    }
+
+    fprintf(fp, "--- symtab[%p]: %d used / %d total ---\n",
+            symtab, symtab->used, symtab->size);
+    for (int j = 0; j < symtab->size; ++j) {
+        int count = 0;
+        for (Symbol* s = symtab->buckets[j]; s; s = s->next) {
+            if (!count++) {
+                printf("<%d>", j);
+            }
+            printf(" [%d:%s]", s->type, s->name);
+        }
+        if (count) {
+            printf("\n");
+        }
+    }
+}
+
 // djb2 hash function
 unsigned long hash(const char* str)
 {

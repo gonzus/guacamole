@@ -1,6 +1,7 @@
 #ifndef NODE_H__
 #define NODE_H__
 
+#include <stdio.h>
 #include "symtab.h"
 
 // Possible types of Node
@@ -43,5 +44,7 @@ Node* node_symb(Symbol* symb);
 Node* node_oper(int oper, int nchildren, ...);
 
 void node_destroy(Node* node);
+
+void node_dump(Node* node, int parent, int level, FILE* fp);
 
 #endif
