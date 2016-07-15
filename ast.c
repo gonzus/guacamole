@@ -28,9 +28,19 @@ void ast_dump(AST* ast, FILE* fp)
     fprintf(fp, "--- symtab: %d used / %d total ---\n",
             ast->symtab->used, ast->symtab->size);
     for (int j = 0; j < ast->symtab->size; ++j) {
+        int count = 0;
         Symbol* l = ast->symtab->buckets[j];
         for (Symbol* s = l; s; s = s->next) {
-            printf("%d: [%s]\n", s->type, s->name);
+            if (count++) {
+                printf(", ");
+            }
+            else {
+                printf("<%d> ", j);
+            }
+            printf("[%d:%s]", s->type, s->name);
+        }
+        if (count) {
+            printf("\n");
         }
     }
 }
@@ -69,7 +79,7 @@ static void dump_node(Node* node, int parent, FILE* fp, int level)
             break;
 
         case NODE_SYMB:
-            fprintf(fp, "SYMB\n");
+            fprintf(fp, "SYMB[%d:%s]\n", node->symb->type, node->symb->name);
             break;
 
         case NODE_OPER:

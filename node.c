@@ -32,12 +32,12 @@ Node* node_vals(const char* value)
     return node;
 }
 
-Node* node_symb(SymTab* symtab, const char* name, int type)
+Node* node_symb(Symbol* symb)
 {
-    fprintf(stderr, "Node SYMB[%d:%s]\n", type, name);
+    fprintf(stderr, "Node SYMB[%d:%s]\n", symb->type, symb->name);
     Node* node = (Node*) malloc(sizeof(Node));
     node->type = NODE_SYMB;
-    node->symb = symtab_lookup(symtab, name, type, 1);
+    node->symb = symb;
     return node;
 }
 

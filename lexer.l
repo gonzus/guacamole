@@ -70,9 +70,21 @@ if              { return IF;    }
 else            { return ELSE;  }
 print           { return PRINT; }
 
-[a-zA-Z_][0-9a-zA-Z_]+    { yylval->vals = strdup(yytext); return STRING; }
+[a-zA-Z_][0-9a-zA-Z_]*    {
+                    SymTab* symtab = (*ast)->symtab;
+                    Symbol* s = symtab_lookup(symtab, yytext, IDENTIFIER, 1);
+                    yylval->symb = s;
+                    return s->type;
+                }
 
-[-+*/();]       { return yytext[0]; }
+"<"             { return LT; }
+"<="            { return LE; }
+">"             { return GT; }
+">="            { return GE; }
+"=="            { return EQ; }
+"!="            { return NE; }
+
+[-+*/(){}=;]    { return yytext[0]; }
 
 .               { yyerror(yylloc_param, ast, yyscanner, "WTF? Unknown character");  }
 

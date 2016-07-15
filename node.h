@@ -39,7 +39,7 @@ typedef struct Node
 Node* node_vali(long value);
 Node* node_valr(double value);
 Node* node_vals(const char* value);
-Node* node_symb(struct SymTab* symtab, const char* name, int type);
+Node* node_symb(Symbol* symb);
 Node* node_oper(int oper, int nchildren, ...);
 
 void node_destroy(Node* node);

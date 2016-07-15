@@ -3,6 +3,25 @@
 #include "parser.h"
 #include "lexer.h"
 
+static AST* create_and_populate_ast(void)
+{
+    static struct Reserved {
+        const char* word;
+        int token;
+    } reserved[] = {
+        { "if"     , IF    },
+        { "while"  , WHILE },
+        { "else"   , ELSE  },
+        { "print"  , PRINT },
+    };
+
+    AST* ast = ast_create();
+    for (int j = 0; j < sizeof(reserved) / sizeof(reserved[0]); ++j) {
+        symtab_lookup(ast->symtab, reserved[j].word, reserved[j].token, 1);
+    }
+    return ast;
+}
+
 static void process(FILE* fp)
 {
     // yyin = fp;
@@ -12,7 +31,7 @@ static void process(FILE* fp)
         return;
     }
 
-    AST* ast = ast_create();
+    AST* ast = create_and_populate_ast();
     if (yyparse(&ast, scanner)) {
         fprintf(stderr, "Could not parse input\n");
     }

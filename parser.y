@@ -73,6 +73,7 @@ int yyerror(YYLTYPE* yyllocp,
 %nonassoc ELSE
 
 // Terminals with a specific precedence
+%left GT LT GE LE EQ NE
 %left '+' '-'
 %left '*' '/'
 %nonassoc UMINUS
@@ -95,6 +96,7 @@ stmt_list
 
 stmt
     : ';'                                 { $$ = node_oper(';', 0); }
+    | IDENTIFIER '=' expr ';'             { $$ = node_oper('=', 2, node_symb($1), $3); }
     | expr ';'                            { $$ = $1; }
     | PRINT expr ';'                      { $$ = node_oper(PRINT, 1, $2); }
     | WHILE '(' expr ')' stmt             { $$ = node_oper(WHILE, 1, $3, $5); }
@@ -107,11 +109,18 @@ expr
     : INTEGER                             { $$ = node_vali($1); }
     | REAL                                { $$ = node_valr($1); }
     | STRING                              { $$ = node_vals($1); }
+    | IDENTIFIER                          { $$ = node_symb($1); }
     | '-' expr %prec UMINUS               { $$ = node_oper(UMINUS, 1, $2); }
     | expr '+' expr                       { $$ = node_oper('+', 2, $1, $3); }
     | expr '-' expr                       { $$ = node_oper('-', 2, $1, $3); }
     | expr '*' expr                       { $$ = node_oper('*', 2, $1, $3); }
     | expr '/' expr                       { $$ = node_oper('/', 2, $1, $3); }
+    | expr GT expr                        { $$ = node_oper(GT, 2, $1, $3); }
+    | expr GE expr                        { $$ = node_oper(GE, 2, $1, $3); }
+    | expr LT expr                        { $$ = node_oper(LT, 2, $1, $3); }
+    | expr LE expr                        { $$ = node_oper(LE, 2, $1, $3); }
+    | expr EQ expr                        { $$ = node_oper(EQ, 2, $1, $3); }
+    | expr NE expr                        { $$ = node_oper(NE, 2, $1, $3); }
     | '(' expr ')'                        { $$ = $2; }
     ;
 
