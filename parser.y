@@ -20,6 +20,8 @@ int yyerror(YYLTYPE* yyllocp,
 
 %}
 
+%token-table
+
 %define api.pure full
 %locations
 %param   { AST** ast }
@@ -46,6 +48,8 @@ int yyerror(YYLTYPE* yyllocp,
             AST** ast,
             yyscan_t yyscanner,
             const char *msg);
+
+const char* token_name(int token);
 }
 
 %output  "parser.c"
@@ -125,3 +129,8 @@ expr
     ;
 
 %%
+
+const char* token_name(int token)
+{
+    return yytname[YYTRANSLATE(token)];
+}

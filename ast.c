@@ -1,6 +1,7 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include "ast.h"
+#include "parser.h"
 
 static void dump_node(Node* node, int parent, FILE* fp, int level);
 
@@ -84,12 +85,16 @@ static void dump_node(Node* node, int parent, FILE* fp, int level)
 
         case NODE_OPER:
             if (delta) {
+#if 1
+                fprintf(fp, "OPER[%s]\n", token_name(node->oper->oper));
+#else
                 if (isprint(node->oper->oper)) {
                     fprintf(fp, "OPER[%c]\n", node->oper->oper);
                 }
                 else {
                     fprintf(fp, "OPER[%d]\n", node->oper->oper);
                 }
+#endif
             }
             for (int j = 0; j < node->oper->nchildren; ++j) {
                 dump_node(node->oper->children[j], node->oper->oper, fp, level);
