@@ -67,13 +67,16 @@ REAL        {NUMBER}+\.{NUMBER}*|{NUMBER}*\.{NUMBER}+
 
 %%
 
-{BLANK}+        { /* Skip blanks */ }
+{BLANK}+        { /* Skip blanks */   }
+#.*             { /* Skip comments */ }
 
 {INTEGER}       { sscanf(yytext, "%ld", &yylval->vali); return INTEGER; }
 {REAL}          { sscanf(yytext, "%lf", &yylval->valr); return REAL;    }
 
 {ALPHA}{ALNUM}* {
+                    /* Here we take care of identifiers and reserved words */
                     SymTab* symtab = (*ast)->symtab;
+                    /* Look it up; if not there, create as IDENTIFIER */
                     Symbol* s = symtab_lookup(symtab, yytext, IDENTIFIER, 1);
                     yylval->symb = s;
                     return s->type;
@@ -86,9 +89,13 @@ REAL        {NUMBER}+\.{NUMBER}*|{NUMBER}*\.{NUMBER}+
 "=="            { return EQ; }
 "!="            { return NE; }
 
-[-+*/(){}=;]    { return yytext[0]; }
+[-+*/(){}=;]    {
+                    /* These are valid one-character tokens */
+                    return yytext[0];
+                }
 
 .               {
+                    /* Anything else, complain loudly */
                     char msg[1024];
                     sprintf(msg, "WTF? Unknown character [%c]", yytext[0]);
                     yyerror(yylloc_param, ast, yyscanner, msg);
