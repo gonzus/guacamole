@@ -21,6 +21,9 @@ CFLAGS    += -Wno-comment
 # compile / link for debugging
 ALL_FLAGS += -g
 
+# C compiler flags for lexer.c
+C_LEXER_FLAGS = -Wno-unused-function -Wno-unneeded-internal-declaration
+
 all: main
 
 O_FILES   = $(C_FILES:.c=.o)
@@ -38,6 +41,8 @@ parser.c parser.h: parser.y lexer.h
 	bison --locations parser.y
 
 lexer.o: lexer.c parser.h
+	$(CC) -c $(ALL_FLAGS) $(CFLAGS) $(CPPFLAGS) $(C_LEXER_FLAGS) $< -o $@
+
 parser.o: parser.c parser.h lexer.h
 node.o: node.c
 symtab.o: symtab.c
