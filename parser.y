@@ -91,7 +91,7 @@ const char* token_name(int token);
 %nonassoc UMINUS
 
 /* Nonterminals, with their corresponding types */
-%type <node> stmt expr stmt_list simple_stmt
+%type <node> stmt expr stmt_list simple_stmt block_stmt
 
 /* Explicitly define starting rule */
 %start program
@@ -109,12 +109,12 @@ stmt_list
 
 stmt
     : simple_stmt ';'                     { $$ = $1; }
-    | WHILE '(' expr ')' stmt             { $$ = node_oper(WHILE, 2, $3, $5); }
-    | IF '(' expr ')' stmt %prec NO_ELSE  { $$ = node_oper(IF, 2, $3, $5); }
-    | IF '(' expr ')' stmt ELSE stmt      { $$ = node_oper(IF, 3, $3, $5, $7); }
-    | '{' stmt_list '}'                   { $$ = $2; }
     | simple_stmt IF expr ';'             { $$ = node_oper(IF, 2, $3, $1); }
     | simple_stmt WHILE expr ';'          { $$ = node_oper(WHILE, 2, $3, $1); }
+    | block_stmt                          { $$ = $1; }
+    | WHILE '(' expr ')' block_stmt       { $$ = node_oper(WHILE, 2, $3, $5); }
+    | IF '(' expr ')' block_stmt          { $$ = node_oper(IF, 2, $3, $5); }
+    | IF '(' expr ')' block_stmt ELSE block_stmt    { $$ = node_oper(IF, 3, $3, $5, $7); }
     ;
 
 simple_stmt
@@ -122,6 +122,10 @@ simple_stmt
     | IDENTIFIER '=' expr                 { $$ = node_oper('=', 2, node_symb($1), $3); }
     | expr                                { $$ = $1; }
     | PRINT expr                          { $$ = node_oper(PRINT, 1, $2); }
+    ;
+
+block_stmt
+    : '{' stmt_list '}'                   { $$ = $2; }
     ;
 
 expr
