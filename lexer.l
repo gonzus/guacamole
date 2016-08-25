@@ -60,7 +60,7 @@ static void update_loc(YYLTYPE *loc, char *txt)
 BLANK       [ \r\n\t]
 NUMBER      [0-9]
 ALPHA       [a-zA-Z_]
-ALNUM       [a-zA-Z_0-9]
+ALNUM       [a-zA-Z0-9_]
 
 INTEGER     {NUMBER}+
 REAL        {NUMBER}+\.{NUMBER}*|{NUMBER}*\.{NUMBER}+
@@ -68,7 +68,7 @@ REAL        {NUMBER}+\.{NUMBER}*|{NUMBER}*\.{NUMBER}+
 %%
 
 {BLANK}+        { /* Skip blanks */   }
-#.*             { /* Skip comments */ }
+#.*             { /* Skip comments; BAD, FIX */ }
 
 {INTEGER}       { sscanf(yytext, "%ld", &yylval->vali); return INTEGER; }
 {REAL}          { sscanf(yytext, "%lf", &yylval->valr); return REAL;    }
@@ -82,14 +82,14 @@ REAL        {NUMBER}+\.{NUMBER}*|{NUMBER}*\.{NUMBER}+
                     return s->type;
                 }
 
-"<"             { return LT; }
 "<="            { return LE; }
-">"             { return GT; }
 ">="            { return GE; }
 "=="            { return EQ; }
 "!="            { return NE; }
+"<"             { return LT; }
+">"             { return GT; }
 
-[-+*/(){}=;]    {
+[-+*/(){}=;$@%] {
                     /* These are valid one-character tokens */
                     return yytext[0];
                 }

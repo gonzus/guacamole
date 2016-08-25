@@ -92,6 +92,7 @@ const char* token_name(int token);
 
 /* Nonterminals, with their corresponding types */
 %type <node> stmt expr stmt_list simple_stmt block_stmt
+%type <node> assign_stmt variable
 
 /* Explicitly define starting rule */
 %start program
@@ -119,9 +120,13 @@ stmt
 
 simple_stmt
     :                                     { $$ = node_oper(';', 0); }
-    | IDENTIFIER '=' expr                 { $$ = node_oper('=', 2, node_symb($1), $3); }
+    | assign_stmt                         { $$ = $1; }
     | expr                                { $$ = $1; }
     | PRINT expr                          { $$ = node_oper(PRINT, 1, $2); }
+    ;
+
+assign_stmt
+    : variable '=' expr                   { $$ = node_oper('=', 2, $1, $3); }
     ;
 
 block_stmt
@@ -132,7 +137,7 @@ expr
     : INTEGER                             { $$ = node_vali($1); }
     | REAL                                { $$ = node_valr($1); }
     | STRING                              { $$ = node_vals($1); }
-    | IDENTIFIER                          { $$ = node_symb($1); }
+    | variable                            { $$ = $1; }
     | '-' expr %prec UMINUS               { $$ = node_oper(UMINUS, 1, $2); }
     | expr '+' expr                       { $$ = node_oper('+', 2, $1, $3); }
     | expr '-' expr                       { $$ = node_oper('-', 2, $1, $3); }
@@ -145,6 +150,12 @@ expr
     | expr EQ expr                        { $$ = node_oper(EQ, 2, $1, $3); }
     | expr NE expr                        { $$ = node_oper(NE, 2, $1, $3); }
     | '(' expr ')'                        { $$ = $2; }
+    ;
+
+variable
+    : '$' IDENTIFIER                      { $$ = node_symb($2); }
+    | '@' IDENTIFIER                      { $$ = node_symb($2); }
+    | '%' IDENTIFIER                      { $$ = node_symb($2); }
     ;
 
 %%
