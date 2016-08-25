@@ -77,11 +77,13 @@ const char* token_name(int token);
 %token <vali> INTEGER
 %token <valr> REAL
 %token <vals> STRING
-%token <symb> IDENTIFIER
+%token <symb> IDENTIFIER FULL_IDENTIFIER
 
 /* Terminals for reserved words, with some precedende for dangling else */
-%token WHILE IF PRINT
-%nonassoc NO_ELSE
+%token USE REQUIRE
+%token MY OUR LOCAL
+%token WHILE PRINT
+%token IF
 %nonassoc ELSE
 
 /* Terminals with a specific precedence */
@@ -91,8 +93,9 @@ const char* token_name(int token);
 %nonassoc UMINUS
 
 /* Nonterminals, with their corresponding types */
-%type <node> stmt expr stmt_list simple_stmt block_stmt
-%type <node> assign_stmt variable
+%type <node> stmt expr stmt_list
+%type <node> simple_stmt block_stmt import_stmt decl_stmt
+%type <node> assign_stmt variable full_variable
 
 /* Explicitly define starting rule */
 %start program
@@ -109,13 +112,26 @@ stmt_list
     ;
 
 stmt
-    : simple_stmt ';'                     { $$ = $1; }
+    : import_stmt ';'                     { $$ = $1; }
+    | decl_stmt ';'                       { $$ = $1; }
+    | simple_stmt ';'                     { $$ = $1; }
     | simple_stmt IF expr ';'             { $$ = node_oper(IF, 2, $3, $1); }
     | simple_stmt WHILE expr ';'          { $$ = node_oper(WHILE, 2, $3, $1); }
     | block_stmt                          { $$ = $1; }
     | WHILE '(' expr ')' block_stmt       { $$ = node_oper(WHILE, 2, $3, $5); }
     | IF '(' expr ')' block_stmt          { $$ = node_oper(IF, 2, $3, $5); }
     | IF '(' expr ')' block_stmt ELSE block_stmt    { $$ = node_oper(IF, 3, $3, $5, $7); }
+    ;
+
+import_stmt
+    : USE full_variable                   { $$ = node_oper(USE, 1, $2); }
+    | REQUIRE full_variable               { $$ = node_oper(REQUIRE, 1, $2); }
+    ;
+
+decl_stmt
+    : MY variable                         { $$ = node_oper(MY, 1, $2); }
+    | OUR variable                        { $$ = node_oper(OUR, 1, $2); }
+    | LOCAL variable                      { $$ = node_oper(LOCAL, 1, $2); }
     ;
 
 simple_stmt
@@ -150,6 +166,10 @@ expr
     | expr EQ expr                        { $$ = node_oper(EQ, 2, $1, $3); }
     | expr NE expr                        { $$ = node_oper(NE, 2, $1, $3); }
     | '(' expr ')'                        { $$ = $2; }
+    ;
+
+full_variable
+    : FULL_IDENTIFIER                     { $$ = node_symb($1); }
     ;
 
 variable

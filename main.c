@@ -9,10 +9,15 @@ static AST* create_and_populate_ast(void)
         const char* word;
         int token;
     } reserved[] = {
-        { "if"     , IF    },
-        { "while"  , WHILE },
-        { "else"   , ELSE  },
-        { "print"  , PRINT },
+        { "use"     , USE       },
+        { "require" , REQUIRE   },
+        { "my"      , MY        },
+        { "our"     , OUR       },
+        { "local"   , LOCAL     },
+        { "print"   , PRINT     },
+        { "while"   , WHILE     },
+        { "if"      , IF        },
+        { "else"    , ELSE      },
     };
 
     AST* ast = ast_create();

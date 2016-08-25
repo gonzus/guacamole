@@ -61,6 +61,7 @@ BLANK       [ \r\n\t]
 NUMBER      [0-9]
 ALPHA       [a-zA-Z_]
 ALNUM       [a-zA-Z0-9_]
+IDENT       {ALPHA}{ALNUM}*
 
 INTEGER     {NUMBER}+
 REAL        {NUMBER}+\.{NUMBER}*|{NUMBER}*\.{NUMBER}+
@@ -68,15 +69,25 @@ REAL        {NUMBER}+\.{NUMBER}*|{NUMBER}*\.{NUMBER}+
 %%
 
 {BLANK}+        { /* Skip blanks */   }
-#.*             { /* Skip comments; BAD, FIX */ }
+#.*             { /* Skip comments; TODO fix, this is valid: $x =~ s/#/ok/g; */ }
 
 {INTEGER}       { sscanf(yytext, "%ld", &yylval->vali); return INTEGER; }
 {REAL}          { sscanf(yytext, "%lf", &yylval->valr); return REAL;    }
 
-{ALPHA}{ALNUM}* {
-                    /* Here we take care of identifiers and reserved words */
+{IDENT}(::{IDENT})+ {
+                    /* Fully qualified identifier => Foo::Bar::baz */
                     SymTab* symtab = (*ast)->symtab;
-                    /* Look it up; if not there, create as IDENTIFIER */
+                    /* Look it up; if not there, create */
+                    /* TODO symbol should be created in parser: $x, @x, %x */
+                    Symbol* s = symtab_lookup(symtab, yytext, FULL_IDENTIFIER, 1);
+                    yylval->symb = s;
+                    return s->type;
+                }
+{IDENT}         {
+                    /* Simple identifier => baz; could be a reserved word */
+                    SymTab* symtab = (*ast)->symtab;
+                    /* Look it up; if not there, create */
+                    /* TODO symbol should be created in parser: $x, @x, %x */
                     Symbol* s = symtab_lookup(symtab, yytext, IDENTIFIER, 1);
                     yylval->symb = s;
                     return s->type;
