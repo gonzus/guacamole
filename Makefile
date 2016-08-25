@@ -1,6 +1,7 @@
 C_FILES    = \
 	lexer.c \
 	parser.c \
+	oper.c \
 	node.c \
 	symtab.c \
 	ast.c \
@@ -44,6 +45,7 @@ lexer.o: lexer.c parser.h
 	$(CC) -c $(ALL_FLAGS) $(CFLAGS) $(CPPFLAGS) $(C_LEXER_FLAGS) $< -o $@
 
 parser.o: parser.c parser.h lexer.h
+oper.o: oper.c
 node.o: node.c
 symtab.o: symtab.c
 ast.o: ast.c

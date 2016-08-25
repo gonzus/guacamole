@@ -2,8 +2,8 @@
 
 #include <stdio.h>
 #include "ast.h"
-#include "node.h"
 #include "symtab.h"
+#include "node.h"
 #include "parser.h"
 
 // Make sure we keep the location (line/col) updated

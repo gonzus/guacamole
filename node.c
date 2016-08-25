@@ -4,6 +4,8 @@
 #include "symtab.h"
 #include "ast.h"
 #include "parser.h"
+#include "symtab.h"
+#include "oper.h"
 #include "node.h"
 
 Node* node_vali(long value)
@@ -43,15 +45,9 @@ Node* node_oper(int oper, int nchildren, ...)
     Node* node = (Node*) malloc(sizeof(Node));
     node->type = NODE_OPER;
 
-    node->oper = (Oper*) malloc(sizeof(Oper) + sizeof(Node*) * nchildren);
-    node->oper->oper = oper;
-    node->oper->nchildren = nchildren;
-
     va_list ap;
     va_start(ap, nchildren);
-    for (int j = 0; j < nchildren; ++j) {
-        node->oper->children[j] = va_arg(ap, Node*);
-    }
+    node->oper = oper_create(oper, nchildren, ap);
     va_end(ap);
     return node;
 }
@@ -89,7 +85,7 @@ void node_dump(Node* node, int parent, int level, FILE* fp)
     int delta = 2;
     if (parent == ';' &&
         node->type == NODE_OPER &&
-        node->oper->oper == ';') {
+        node->oper->type == ';') {
         delta = 0;
     }
     level += delta;
@@ -118,12 +114,7 @@ void node_dump(Node* node, int parent, int level, FILE* fp)
             break;
 
         case NODE_OPER:
-            if (delta) {
-                fprintf(fp, "OPER[%s]\n", token_name(node->oper->oper));
-            }
-            for (int j = 0; j < node->oper->nchildren; ++j) {
-                node_dump(node->oper->children[j], node->oper->oper, level, fp);
-            }
+            oper_dump(node->oper, level, fp);
             break;
     }
     level -= delta;
