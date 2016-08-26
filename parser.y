@@ -80,7 +80,7 @@ const char* token_name(int token);
 %token <symb> IDENTIFIER FULL_IDENTIFIER
 
 /* Terminals for reserved words, with some precedende for dangling else */
-%token USE REQUIRE
+%token PACKAGE USE REQUIRE
 %token MY OUR LOCAL
 %token WHILE PRINT
 %token IF
@@ -94,8 +94,10 @@ const char* token_name(int token);
 
 /* Nonterminals, with their corresponding types */
 %type <node> stmt expr stmt_list
-%type <node> simple_stmt block_stmt import_stmt decl_stmt
+%type <node> simple_stmt block_stmt
+%type <node> package_stmt use_stmt require_stmt decl_stmt
 %type <node> assign_stmt variable full_variable
+%type <node> id id_list
 
 /* Explicitly define starting rule */
 %start program
@@ -112,7 +114,9 @@ stmt_list
     ;
 
 stmt
-    : import_stmt ';'                     { $$ = $1; }
+    : package_stmt ';'                    { $$ = $1; }
+    | use_stmt ';'                        { $$ = $1; }
+    | require_stmt ';'                    { $$ = $1; }
     | decl_stmt ';'                       { $$ = $1; }
     | simple_stmt ';'                     { $$ = $1; }
     | simple_stmt IF expr ';'             { $$ = node_oper(IF, 2, $3, $1); }
@@ -123,9 +127,27 @@ stmt
     | IF '(' expr ')' block_stmt ELSE block_stmt    { $$ = node_oper(IF, 3, $3, $5, $7); }
     ;
 
-import_stmt
+package_stmt
+    : PACKAGE full_variable               { $$ = node_oper(PACKAGE, 1, $2); }
+    ;
+
+use_stmt
     : USE full_variable                   { $$ = node_oper(USE, 1, $2); }
-    | REQUIRE full_variable               { $$ = node_oper(REQUIRE, 1, $2); }
+    | USE full_variable '(' id_list ')'   { $$ = node_oper(USE, 2, $2, $4); }
+    ;
+
+id_list
+    : id                                  { $$ = $1; }
+    | id_list id                          { $$ = node_oper(';', 2, $1, $2); }
+    ;
+
+id
+    :                                     { $$ = node_oper(';', 0); }
+    | IDENTIFIER                          { $$ = node_symb($1); }
+    ;
+
+require_stmt
+    : REQUIRE full_variable               { $$ = node_oper(REQUIRE, 1, $2); }
     ;
 
 decl_stmt

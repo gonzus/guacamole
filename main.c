@@ -9,6 +9,7 @@ static AST* create_and_populate_ast(void)
         const char* word;
         int token;
     } reserved[] = {
+        { "package" , PACKAGE   },
         { "use"     , USE       },
         { "require" , REQUIRE   },
         { "my"      , MY        },
