@@ -34,6 +34,7 @@ Node* node_vals(const char* value);
 Node* node_symb(struct Symbol* symb);
 Node* node_oper(int oper, int nchildren, ...);
 
+Node* node_create(void);
 void node_destroy(Node* node);
 
 void node_dump(Node* node, int parent, int level, FILE* fp);

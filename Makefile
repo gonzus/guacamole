@@ -1,4 +1,5 @@
 C_FILES    = \
+	gmem.c \
 	lexer.c \
 	parser.c \
 	oper.c \
@@ -8,7 +9,7 @@ C_FILES    = \
 	main.c \
 
 CC         = cc
-CPPFLAGS  +=
+CPPFLAGS  += -DGMEM_CHECK
 
 # use ANSI C
 CFLAGS    += -std=c89
@@ -44,6 +45,7 @@ parser.c parser.h: parser.y lexer.h
 lexer.o: lexer.c parser.h
 	$(CC) -c $(ALL_FLAGS) $(CFLAGS) $(CPPFLAGS) $(C_LEXER_FLAGS) $< -o $@
 
+gmem.o: gmem.c
 parser.o: parser.c parser.h lexer.h
 oper.o: oper.c
 node.o: node.c

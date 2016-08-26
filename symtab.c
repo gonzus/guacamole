@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include "gmem.h"
 #include "symtab.h"
 
 // It is better when this is a prime
@@ -9,9 +10,9 @@ static unsigned long hash(const char* str);
 
 SymTab* symtab_create(int size)
 {
+    SymTab* symtab;
     size = (size <= 0) ? SYMTAB_DEFAULT_SIZE : size;
-    SymTab* symtab = (SymTab*) malloc(sizeof(SymTab) +
-                                      sizeof(Symbol*) * size);
+    GMEM_NEW(symtab, SymTab*, sizeof(SymTab) + sizeof(Symbol*) * size);
     symtab->used = 0;
     symtab->size = size;
     for (int j = 0; j < size; ++j) {
@@ -26,11 +27,11 @@ void symtab_destroy(SymTab* symtab)
         for (Symbol* s = symtab->buckets[j]; s != 0; ) {
             Symbol* q = s;
             s = s->next;
-            free(q->name);
-            free(q);
+            GMEM_DELSTR(q->name, -1);
+            GMEM_DEL(q, Symbol*, sizeof(Symbol));
         }
     }
-    free(symtab);
+    GMEM_DEL(symtab, SymTab*, sizeof(SymTab) + sizeof(Symbol*) * symtab->size);
 }
 
 Symbol* symtab_lookup(SymTab* symtab,
@@ -47,8 +48,8 @@ Symbol* symtab_lookup(SymTab* symtab,
         }
     }
     if (!sym && create) {
-        sym = (Symbol*) malloc(sizeof(Symbol));
-        sym->name = strdup(name);
+        GMEM_NEW(sym, Symbol*, sizeof(Symbol));
+        GMEM_NEWSTR(sym->name, name, -1);
         sym->type = type;
         sym->next = symtab->buckets[p];
         symtab->buckets[p] = sym;

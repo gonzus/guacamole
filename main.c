@@ -45,6 +45,7 @@ static void process(FILE* fp)
         ast_dump(ast, stdout);
     }
 
+    ast_destroy(ast);
     yylex_destroy(scanner);
 }
 

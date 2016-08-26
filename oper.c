@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include "gmem.h"
 #include "symtab.h"
 #include "ast.h"
 #include "parser.h"
@@ -7,7 +8,8 @@
 
 Oper* oper_create(int type, int nchildren, va_list ap)
 {
-    Oper* oper = (Oper*) malloc(sizeof(Oper) + sizeof(Oper*) * nchildren);
+    Oper* oper;
+    GMEM_NEW(oper, Oper*, sizeof(Oper) + sizeof(Oper*) * nchildren);
     oper->type = type;
     oper->nchildren = nchildren;
 
@@ -26,7 +28,7 @@ void oper_destroy(Oper* oper)
     for (int j = 0; j < oper->nchildren; ++j) {
         node_destroy(oper->children[j]);
     }
-    free(oper);
+    GMEM_DEL(oper, Oper*, sizeof(Oper) + sizeof(Oper*) * oper->nchildren);
 }
 
 void oper_dump(Oper* oper, int level, FILE* fp)

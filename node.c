@@ -1,6 +1,7 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
+#include "gmem.h"
 #include "symtab.h"
 #include "ast.h"
 #include "parser.h"
@@ -10,7 +11,7 @@
 
 Node* node_vali(long value)
 {
-    Node* node = (Node*) malloc(sizeof(Node));
+    Node* node = node_create();
     node->type = NODE_VALI;
     node->vali = value;
     return node;
@@ -18,7 +19,7 @@ Node* node_vali(long value)
 
 Node* node_valr(double value)
 {
-    Node* node = (Node*) malloc(sizeof(Node));
+    Node* node = node_create();
     node->type = NODE_VALR;
     node->valr = value;
     return node;
@@ -26,15 +27,15 @@ Node* node_valr(double value)
 
 Node* node_vals(const char* value)
 {
-    Node* node = (Node*) malloc(sizeof(Node));
+    Node* node = node_create();
     node->type = NODE_VALS;
-    node->vals = strdup(value);
+    GMEM_NEWSTR(node->vals, value, -1);
     return node;
 }
 
 Node* node_symb(Symbol* symb)
 {
-    Node* node = (Node*) malloc(sizeof(Node));
+    Node* node = node_create();
     node->type = NODE_SYMB;
     node->symb = symb;
     return node;
@@ -42,13 +43,20 @@ Node* node_symb(Symbol* symb)
 
 Node* node_oper(int oper, int nchildren, ...)
 {
-    Node* node = (Node*) malloc(sizeof(Node));
+    Node* node = node_create();
     node->type = NODE_OPER;
 
     va_list ap;
     va_start(ap, nchildren);
     node->oper = oper_create(oper, nchildren, ap);
     va_end(ap);
+    return node;
+}
+
+Node* node_create(void)
+{
+    Node* node;
+    GMEM_NEW(node, Node*, sizeof(Node));
     return node;
 }
 
@@ -60,20 +68,17 @@ void node_destroy(Node* node)
 
     switch (node->type) {
         case NODE_VALS:
-            free(node->vals);
+            GMEM_DELSTR(node->vals, -1);
             break;
 
         case NODE_OPER:
-            for (int j = 0; j < node->oper->nchildren; ++j) {
-                node_destroy(node->oper->children[j]);
-            }
-            free(node->oper);
+            oper_destroy(node->oper);
             break;
 
         default:
             break;
     }
-    free(node);
+    GMEM_DEL(node, Node*, sizeof(Node));
 }
 
 void node_dump(Node* node, int parent, int level, FILE* fp)
