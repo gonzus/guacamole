@@ -80,7 +80,7 @@ const char* token_name(int token);
 %token <symb> IDENTIFIER FULL_IDENTIFIER
 
 /* Terminals for reserved words, with some precedende for dangling else */
-%token PACKAGE USE REQUIRE
+%token PACKAGE USE REQUIRE PARENT
 %token MY OUR LOCAL
 %token WHILE PRINT
 %token IF
@@ -96,8 +96,11 @@ const char* token_name(int token);
 %type <node> stmt expr stmt_list
 %type <node> simple_stmt block_stmt
 %type <node> package_stmt use_stmt require_stmt decl_stmt
-%type <node> assign_stmt variable full_variable
-%type <node> id id_list
+%type <node> assign_stmt variable
+// %type <node> id id_list
+%type <node> symbol
+%type <node> method_spec method_list
+%type <node> package_spec package_list
 
 /* Explicitly define starting rule */
 %start program
@@ -128,26 +131,44 @@ stmt
     ;
 
 package_stmt
-    : PACKAGE full_variable               { $$ = node_oper(PACKAGE, 1, $2); }
+    : PACKAGE symbol                      { $$ = node_oper(PACKAGE, 1, $2); }
     ;
 
 use_stmt
-    : USE full_variable                   { $$ = node_oper(USE, 1, $2); }
-    | USE full_variable '(' id_list ')'   { $$ = node_oper(USE, 2, $2, $4); }
+    : USE symbol method_spec              { $$ = node_oper(USE, 2, $2, $3); }
+    | USE PARENT package_spec             { $$ = node_oper(PARENT, 1, $3); }
     ;
 
-id_list
-    : id                                  { $$ = $1; }
-    | id_list id                          { $$ = node_oper(';', 2, $1, $2); }
-    ;
-
-id
+method_spec
     :                                     { $$ = node_oper(';', 0); }
+    | '(' ')'                             { $$ = node_oper(';', 0); }
+    | symbol                              { $$ = $1; }
+    | '(' method_list ')'                 { $$ = $2; }
+    ;
+
+method_list
+    : symbol                              { $$ = $1; }
+    | method_list symbol                  { $$ = node_oper(';', 2, $1, $2); }
+    ;
+
+package_spec
+    : symbol                              { $$ = $1; }
+    | '(' package_list ')'                { $$ = $2; }
+    ;
+
+package_list
+    : symbol                              { $$ = $1; }
+    | package_list symbol                 { $$ = node_oper(';', 2, $1, $2); }
+    ;
+
+symbol
+    : STRING                              { $$ = node_vals($1); }
     | IDENTIFIER                          { $$ = node_symb($1); }
+    | FULL_IDENTIFIER                     { $$ = node_symb($1); }
     ;
 
 require_stmt
-    : REQUIRE full_variable               { $$ = node_oper(REQUIRE, 1, $2); }
+    : REQUIRE symbol                      { $$ = node_oper(REQUIRE, 1, $2); }
     ;
 
 decl_stmt
@@ -188,10 +209,6 @@ expr
     | expr EQ expr                        { $$ = node_oper(EQ, 2, $1, $3); }
     | expr NE expr                        { $$ = node_oper(NE, 2, $1, $3); }
     | '(' expr ')'                        { $$ = $2; }
-    ;
-
-full_variable
-    : FULL_IDENTIFIER                     { $$ = node_symb($1); }
     ;
 
 variable

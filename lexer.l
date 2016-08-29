@@ -23,6 +23,15 @@ static void update_loc(YYLTYPE *loc, char *txt)
 }
 #define YY_USER_ACTION update_loc(yylloc, yytext);
 
+typedef struct qw_info {
+    char beg;
+    char end;
+    int pos;
+    char tok[1024];
+} qw_info;
+
+static qw_info qw;
+
 %}
 
 /* Define the desired output file names */
@@ -55,9 +64,12 @@ static void update_loc(YYLTYPE *loc, char *txt)
 /* ??? */
 %option noyywrap
 
+%x QW
+
 /* some macros to makes things more readable */
 
-BLANK       [ \r\n\t]
+WS          [ \r\n\t]
+NWS         [^ \r\n\t]
 NUMBER      [0-9]
 ALPHA       [a-zA-Z_]
 ALNUM       [a-zA-Z0-9_]
@@ -68,11 +80,76 @@ REAL        {NUMBER}+\.{NUMBER}*|{NUMBER}*\.{NUMBER}+
 
 %%
 
-{BLANK}+        { /* Skip blanks */   }
+{WS}+           { /* Skip blanks */   }
 #.*             { /* Skip comments; TODO fix, this is valid: $x =~ s/#/ok/g; */ }
+
+"qw".           {
+                    BEGIN(QW);
+                    qw.pos = 0;
+                    qw.beg = yytext[2];
+                    switch (qw.beg) {
+                        case '{':
+                            qw.end = '}';
+                            break;
+                        case '[':
+                            qw.end = ']';
+                            break;
+                        case '(':
+                            qw.end = ')';
+                            break;
+                        case '<':
+                            qw.end = '>';
+                            break;
+                        default:
+                            qw.end = qw.beg;
+                            break;
+                    }
+                    printf("INITIAL => QW [%c:%c]\n", qw.beg, qw.end);
+                    return '(';
+                }
+<QW>{WS}+       {
+                    if (qw.pos > 0) {
+                        qw.tok[qw.pos] = '\0';
+                        printf("QW: WORD [%d:%s]\n", qw.pos, qw.tok);
+                        printf("QW: WS\n");
+                        qw.pos = 0;
+
+                        SymTab* symtab = (*ast)->symtab;
+                        /* TODO treat as string, not symbol */
+                        Symbol* s = symtab_lookup(symtab, qw.tok, IDENTIFIER, 1);
+                        yylval->symb = s;
+                        return s->type;
+                    }
+                    printf("QW: WS\n");
+                }
+<QW>{NWS}       {
+                    if (yytext[0] == qw.end) {
+                        if (qw.pos > 0) {
+                            qw.tok[qw.pos] = '\0';
+                            printf("QW: WORD [%d:%s]\n", qw.pos, qw.tok);
+                            qw.pos = 0;
+                            yyless(0);
+
+                            SymTab* symtab = (*ast)->symtab;
+                            /* TODO treat as string, not symbol */
+                            Symbol* s = symtab_lookup(symtab, qw.tok, IDENTIFIER, 1);
+                            yylval->symb = s;
+                            return s->type;
+                        }
+                        BEGIN(INITIAL);
+                        printf("QW => INITIAL\n");
+                        return ')';
+                    } else {
+                        qw.tok[qw.pos++] = yytext[0];
+                        // printf("QW [%c]\n", yytext[0]);
+                    }
+                }
 
 {INTEGER}       { sscanf(yytext, "%ld", &yylval->vali); return INTEGER; }
 {REAL}          { sscanf(yytext, "%lf", &yylval->valr); return REAL;    }
+
+\'[^\']*\'      { yylval->vals = yytext; return STRING; }
+\"[^\"]*\"      { yylval->vals = yytext; return STRING; }
 
 {IDENT}(::{IDENT})+ {
                     /* Fully qualified identifier => Foo::Bar::baz */
