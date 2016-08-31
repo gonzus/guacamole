@@ -12,6 +12,7 @@ static AST* create_and_populate_ast(void)
         { "package" , PACKAGE   },
         { "use"     , USE       },
         { "parent"  , PARENT    },
+        { "constant", CONSTANT  },
         { "require" , REQUIRE   },
         { "my"      , MY        },
         { "our"     , OUR       },
