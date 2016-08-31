@@ -27,10 +27,53 @@ typedef struct qw_info {
     char beg;
     char end;
     int pos;
+    int sep;
     char tok[1024];
 } qw_info;
 
 static qw_info qw;
+
+static void qw_begin(qw_info* qw, char beg) {
+    qw->pos = qw->sep = 0;
+    qw->beg = beg;
+    switch (beg) {
+        case '{':
+            qw->end = '}';
+            break;
+        case '[':
+            qw->end = ']';
+            break;
+        case '(':
+            qw->end = ')';
+            break;
+        case '<':
+            qw->end = '>';
+            break;
+        default:
+            qw->end = qw->beg;
+            break;
+    }
+}
+
+static void qw_text(qw_info* qw, char text) {
+    qw->tok[qw->pos++] = text;
+}
+
+static Symbol* qw_separator(qw_info* qw, AST** ast) {
+    if (qw->pos <= 0) {
+        return 0;
+    }
+
+    qw->tok[qw->pos] = '\0';
+    printf("QW: WORD [%d:%s]\n", qw->pos, qw->tok);
+    printf("QW: WS\n");
+    qw->pos = 0;
+
+    SymTab* symtab = (*ast)->symtab;
+    /* TODO treat as string, not symbol */
+    Symbol* s = symtab_lookup(symtab, qw->tok, IDENTIFIER, 1);
+    return s;
+}
 
 %}
 
@@ -83,64 +126,49 @@ REAL        {NUMBER}+\.{NUMBER}*|{NUMBER}*\.{NUMBER}+
 {WS}+           { /* Skip blanks */   }
 #.*             { /* Skip comments; TODO fix, this is valid: $x =~ s/#/ok/g; */ }
 
-"qw".           {
-                    BEGIN(QW);
-                    qw.pos = 0;
-                    qw.beg = yytext[2];
-                    switch (qw.beg) {
-                        case '{':
-                            qw.end = '}';
-                            break;
-                        case '[':
-                            qw.end = ']';
-                            break;
-                        case '(':
-                            qw.end = ')';
-                            break;
-                        case '<':
-                            qw.end = '>';
-                            break;
-                        default:
-                            qw.end = qw.beg;
-                            break;
-                    }
+"qw"{WS}*.      {
+                    qw_begin(&qw, yytext[yyleng - 1]);
                     printf("INITIAL => QW [%c:%c]\n", qw.beg, qw.end);
+                    BEGIN(QW);
                     return '(';
                 }
 <QW>{WS}+       {
-                    if (qw.pos > 0) {
-                        qw.tok[qw.pos] = '\0';
-                        printf("QW: WORD [%d:%s]\n", qw.pos, qw.tok);
+                    if (qw.sep) {
+                        qw.sep = 0;
+                        printf("QW: COMMA\n");
+                        return ',';
+                    }
+                    Symbol* s = qw_separator(&qw, ast);
+                    if (!s) {
                         printf("QW: WS\n");
-                        qw.pos = 0;
-
-                        SymTab* symtab = (*ast)->symtab;
-                        /* TODO treat as string, not symbol */
-                        Symbol* s = symtab_lookup(symtab, qw.tok, IDENTIFIER, 1);
+                    } else {
+                        qw.sep = 1;
                         yylval->symb = s;
                         return s->type;
                     }
-                    printf("QW: WS\n");
                 }
 <QW>{NWS}       {
+                    if (qw.sep) {
+                        yyless(0);
+                        qw.sep = 0;
+                        printf("QW: COMMA\n");
+                        return ',';
+                    }
                     if (yytext[0] == qw.end) {
-                        if (qw.pos > 0) {
-                            qw.tok[qw.pos] = '\0';
-                            printf("QW: WORD [%d:%s]\n", qw.pos, qw.tok);
-                            qw.pos = 0;
+                        Symbol* s = qw_separator(&qw, ast);
+                        if (!s) {
+                            printf("QW: WS\n");
+                        } else {
                             yyless(0);
-
-                            SymTab* symtab = (*ast)->symtab;
-                            /* TODO treat as string, not symbol */
-                            Symbol* s = symtab_lookup(symtab, qw.tok, IDENTIFIER, 1);
+                            qw.sep = 1;
                             yylval->symb = s;
                             return s->type;
                         }
-                        BEGIN(INITIAL);
                         printf("QW => INITIAL\n");
+                        BEGIN(INITIAL);
                         return ')';
                     } else {
-                        qw.tok[qw.pos++] = yytext[0];
+                        qw_text(&qw, yytext[0]);
                         // printf("QW [%c]\n", yytext[0]);
                     }
                 }
@@ -170,6 +198,9 @@ REAL        {NUMBER}+\.{NUMBER}*|{NUMBER}*\.{NUMBER}+
                     return s->type;
                 }
 
+"=>"            { return ','; }
+"\.\."          { printf("DOTDOT\n"); return DOTDOT; }
+
 "<="            { return LE; }
 ">="            { return GE; }
 "=="            { return EQ; }
@@ -177,7 +208,7 @@ REAL        {NUMBER}+\.{NUMBER}*|{NUMBER}*\.{NUMBER}+
 "<"             { return LT; }
 ">"             { return GT; }
 
-[-+*/(){}=;$@%] {
+[\[\]\(\)\{\}\-\+\*/=,;\$@%] {
                     /* These are valid one-character tokens */
                     return yytext[0];
                 }
