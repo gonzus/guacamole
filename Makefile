@@ -40,7 +40,7 @@ lexer.c lexer.h: lexer.l
 	flex --bison-locations lexer.l
 
 parser.c parser.h: parser.y lexer.h
-	bison --locations parser.y
+	bison --locations --verbose -g parser.y
 
 lexer.o: lexer.c parser.h
 	$(CC) -c $(ALL_FLAGS) $(CFLAGS) $(CPPFLAGS) $(C_LEXER_FLAGS) $< -o $@
@@ -54,6 +54,8 @@ ast.o: ast.c
 main.o: main.c
 
 clean:
-	rm -f *.o *~ lexer.c lexer.h parser.c parser.h main
-	rm -fr main.dSYM
+	rm -f *.o *~
+	rm -f lexer.c lexer.h
+	rm -f parser.c parser.h parser.dot parser.output
+	rm -fr main main.dSYM
 
