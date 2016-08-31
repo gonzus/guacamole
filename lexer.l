@@ -200,7 +200,7 @@ REAL        {NUMBER}+\.{NUMBER}*|{NUMBER}*\.{NUMBER}+
 
 "=>"            { return ','; }
 "->"            { printf("ARROW\n"); return ARROW; }
-"\.\."          { return DOTDOT; }
+"\.\."          { printf("DOTDOT\n"); return DOTDOT; }
 
 "<="            { return LE; }
 ">="            { return GE; }

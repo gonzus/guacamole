@@ -235,10 +235,12 @@ init_single
 
 init_aref
     : '[' value_list_full ']'             { $$ = node_oper('@', 1, $2); }
+    | '[' value_interval  ']'             { $$ = node_oper('@', 1, $2); }
     ;
 
 init_href
     : '{' value_list_full '}'             { $$ = node_oper('%', 1, $2); }
+    | '{' value_interval  '}'             { $$ = node_oper('%', 1, $2); }
     ;
 
 init_list
