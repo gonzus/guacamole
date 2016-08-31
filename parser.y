@@ -85,7 +85,7 @@ const char* token_name(int token);
 %token WHILE PRINT
 %token IF
 %nonassoc ELSE
-%token DOTDOT
+%token DOTDOT ARROW
 
 /* Terminals with a specific precedence */
 %left GT LT GE LE EQ NE
@@ -97,8 +97,11 @@ const char* token_name(int token);
 %type <node> stmt expr stmt_list
 %type <node> simple_stmt block_stmt
 %type <node> package_stmt use_stmt require_stmt decl_stmt
-%type <node> assign_stmt variable
-%type <node> symbol
+%type <node> assign_stmt
+%type <node> symbol name
+%type <node> aref_reference href_reference
+%type <node> method_call invoker
+%type <node> variable scalar_variable array_variable hash_variable
 %type <node> initializer method_spec package_spec
 %type <node> symbol_list symbol_list_full
 %type <node> value value_list value_list_full value_interval
@@ -173,8 +176,7 @@ symbol
     | REAL                                { $$ = node_valr($1); }
     | STRING                              { $$ = node_vals($1); }
     | variable                            { $$ = $1; }
-    | IDENTIFIER                          { $$ = node_symb($1); }
-    | FULL_IDENTIFIER                     { $$ = node_symb($1); }
+    | name                                { $$ = $1; }
     ;
 
 decl_stmt
@@ -203,6 +205,9 @@ block_stmt
 
 expr
     : symbol                              { $$ = $1; }
+    | aref_reference                      { $$ = $1; }
+    | href_reference                      { $$ = $1; }
+    | method_call                         { $$ = $1; }
     | '-' expr %prec UMINUS               { $$ = node_oper(UMINUS, 1, $2); }
     | expr '+' expr                       { $$ = node_oper('+', 2, $1, $3); }
     | expr '-' expr                       { $$ = node_oper('-', 2, $1, $3); }
@@ -245,6 +250,27 @@ value_interval
     : expr DOTDOT expr                    { $$ = node_oper(DOTDOT, 2, $1, $3); }
     ;
 
+method_call
+    : invoker ARROW IDENTIFIER               { $$ = $1; }
+    | invoker ARROW IDENTIFIER '(' ')'       { $$ = $1; }
+    ;
+
+invoker
+    : name                                { $$ = $1; }
+    | method_call                         { $$ = $1; }
+    | scalar_variable                     { $$ = $1; }
+    | aref_reference                      { $$ = $1; }
+    | href_reference                      { $$ = $1; }
+    ;
+
+aref_reference
+    : invoker ARROW '[' expr ']'   { $$ = $4; }
+    ;
+
+href_reference
+    : invoker ARROW '{' expr '}'  { $$ = $4; }
+    ;
+
 value_list_full
     : value_list                          { $$ = $1; }
     | value_list ','                      { $$ = $1; }
@@ -259,10 +285,27 @@ value
     : init_single                         { $$ = $1; }
     ;
 
+name
+    : IDENTIFIER                          { $$ = node_symb($1); }
+    | FULL_IDENTIFIER                     { $$ = node_symb($1); }
+    ;
+
 variable
-    : '$' IDENTIFIER                      { $$ = node_symb($2); }
-    | '@' IDENTIFIER                      { $$ = node_symb($2); }
-    | '%' IDENTIFIER                      { $$ = node_symb($2); }
+    : scalar_variable                     { $$ = $1; }
+    | array_variable                      { $$ = $1; }
+    | hash_variable                       { $$ = $1; }
+    ;
+
+scalar_variable
+    : '$' name                            { $$ = $2; }
+    ;
+
+array_variable
+    : '@' name                            { $$ = $2; }
+    ;
+
+hash_variable
+    : '%' name                            { $$ = $2; }
     ;
 
 %%

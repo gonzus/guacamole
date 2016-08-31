@@ -199,7 +199,8 @@ REAL        {NUMBER}+\.{NUMBER}*|{NUMBER}*\.{NUMBER}+
                 }
 
 "=>"            { return ','; }
-"\.\."          { printf("DOTDOT\n"); return DOTDOT; }
+"->"            { printf("ARROW\n"); return ARROW; }
+"\.\."          { return DOTDOT; }
 
 "<="            { return LE; }
 ">="            { return GE; }
