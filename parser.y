@@ -80,11 +80,12 @@ const char* token_name(int token);
 %token <symb> IDENTIFIER FULL_IDENTIFIER
 
 /* Terminals for reserved words, with some precedende for dangling else */
-%token PACKAGE USE REQUIRE PARENT
+%token PACKAGE USE REQUIRE PARENT CONSTANT
 %token MY OUR LOCAL
 %token WHILE PRINT
 %token IF
 %nonassoc ELSE
+%token DOTDOT
 
 /* Terminals with a specific precedence */
 %left GT LT GE LE EQ NE
@@ -97,10 +98,11 @@ const char* token_name(int token);
 %type <node> simple_stmt block_stmt
 %type <node> package_stmt use_stmt require_stmt decl_stmt
 %type <node> assign_stmt variable
-// %type <node> id id_list
 %type <node> symbol
-%type <node> method_spec method_list
-%type <node> package_spec package_list
+%type <node> initializer method_spec package_spec
+%type <node> symbol_list symbol_list_full
+%type <node> value value_list value_list_full value_interval
+%type <node> init_single init_list init_aref init_href
 
 /* Explicitly define starting rule */
 %start program
@@ -137,44 +139,51 @@ package_stmt
 use_stmt
     : USE symbol method_spec              { $$ = node_oper(USE, 2, $2, $3); }
     | USE PARENT package_spec             { $$ = node_oper(PARENT, 1, $3); }
-    ;
-
-method_spec
-    :                                     { $$ = node_oper(';', 0); }
-    | '(' ')'                             { $$ = node_oper(';', 0); }
-    | symbol                              { $$ = $1; }
-    | '(' method_list ')'                 { $$ = $2; }
-    ;
-
-method_list
-    : symbol                              { $$ = $1; }
-    | method_list symbol                  { $$ = node_oper(';', 2, $1, $2); }
-    ;
-
-package_spec
-    : symbol                              { $$ = $1; }
-    | '(' package_list ')'                { $$ = $2; }
-    ;
-
-package_list
-    : symbol                              { $$ = $1; }
-    | package_list symbol                 { $$ = node_oper(';', 2, $1, $2); }
-    ;
-
-symbol
-    : STRING                              { $$ = node_vals($1); }
-    | IDENTIFIER                          { $$ = node_symb($1); }
-    | FULL_IDENTIFIER                     { $$ = node_symb($1); }
+    | USE CONSTANT symbol ',' initializer { $$ = node_oper(CONSTANT, 2, $3, $5); }
     ;
 
 require_stmt
     : REQUIRE symbol                      { $$ = node_oper(REQUIRE, 1, $2); }
     ;
 
+method_spec
+    :                                     { $$ = node_oper(';', 0); }
+    | '(' ')'                             { $$ = node_oper(';', 0); }
+    | symbol                              { $$ = $1; }
+    | '(' symbol_list_full ')'            { $$ = $2; }
+    ;
+
+package_spec
+    : symbol                              { $$ = $1; }
+    | '(' symbol_list_full ')'            { $$ = $2; }
+    ;
+
+symbol_list_full
+    : symbol_list                         { $$ = $1; }
+    | symbol_list ','                     { $$ = $1; }
+    ;
+
+symbol_list
+    : symbol                              { $$ = $1; }
+    | symbol_list ',' symbol              { $$ = node_oper(';', 2, $1, $3); }
+    ;
+
+symbol
+    : INTEGER                             { $$ = node_vali($1); }
+    | REAL                                { $$ = node_valr($1); }
+    | STRING                              { $$ = node_vals($1); }
+    | variable                            { $$ = $1; }
+    | IDENTIFIER                          { $$ = node_symb($1); }
+    | FULL_IDENTIFIER                     { $$ = node_symb($1); }
+    ;
+
 decl_stmt
     : MY variable                         { $$ = node_oper(MY, 1, $2); }
+    | MY assign_stmt                      { $$ = node_oper(MY, 1, $2); }
     | OUR variable                        { $$ = node_oper(OUR, 1, $2); }
+    | OUR assign_stmt                     { $$ = node_oper(OUR, 1, $2); }
     | LOCAL variable                      { $$ = node_oper(LOCAL, 1, $2); }
+    | LOCAL assign_stmt                   { $$ = node_oper(LOCAL, 1, $2); }
     ;
 
 simple_stmt
@@ -185,7 +194,7 @@ simple_stmt
     ;
 
 assign_stmt
-    : variable '=' expr                   { $$ = node_oper('=', 2, $1, $3); }
+    : variable '=' initializer            { $$ = node_oper('=', 2, $1, $3); }
     ;
 
 block_stmt
@@ -193,10 +202,7 @@ block_stmt
     ;
 
 expr
-    : INTEGER                             { $$ = node_vali($1); }
-    | REAL                                { $$ = node_valr($1); }
-    | STRING                              { $$ = node_vals($1); }
-    | variable                            { $$ = $1; }
+    : symbol                              { $$ = $1; }
     | '-' expr %prec UMINUS               { $$ = node_oper(UMINUS, 1, $2); }
     | expr '+' expr                       { $$ = node_oper('+', 2, $1, $3); }
     | expr '-' expr                       { $$ = node_oper('-', 2, $1, $3); }
@@ -209,6 +215,48 @@ expr
     | expr EQ expr                        { $$ = node_oper(EQ, 2, $1, $3); }
     | expr NE expr                        { $$ = node_oper(NE, 2, $1, $3); }
     | '(' expr ')'                        { $$ = $2; }
+    ;
+
+initializer
+    : init_single                         { $$ = $1; }
+    | init_list                           { $$ = $1; }
+    ;
+
+init_single
+    : expr                                { $$ = $1; }
+    | init_aref                           { $$ = $1; }
+    | init_href                           { $$ = $1; }
+    ;
+
+init_aref
+    : '[' value_list_full ']'             { $$ = node_oper('@', 1, $2); }
+    ;
+
+init_href
+    : '{' value_list_full '}'             { $$ = node_oper('%', 1, $2); }
+    ;
+
+init_list
+    : value_interval                      { $$ = $1; }
+    | '(' value_list_full  ')'            { $$ = $2; }
+    ;
+
+value_interval
+    : expr DOTDOT expr                    { $$ = node_oper(DOTDOT, 2, $1, $3); }
+    ;
+
+value_list_full
+    : value_list                          { $$ = $1; }
+    | value_list ','                      { $$ = $1; }
+    ;
+
+value_list
+    : value                               { $$ = $1; }
+    | value_list ',' value                { $$ = node_oper(',', 2, $1, $3); }
+    ;
+
+value
+    : init_single                         { $$ = $1; }
     ;
 
 variable
