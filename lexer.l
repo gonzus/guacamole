@@ -200,7 +200,7 @@ REAL        {NUMBER}+\.{NUMBER}*|{NUMBER}*\.{NUMBER}+
                     return s->type;
                 }
 
-"=>"            { return ','; }
+"=>"            { printf("FAT_COMMA\n"); return FAT_COMMA; }
 "->"            { printf("ARROW\n"); return ARROW; }
 "\.\."          { printf("DOTDOT\n"); return DOTDOT; }
 
@@ -211,7 +211,7 @@ REAL        {NUMBER}+\.{NUMBER}*|{NUMBER}*\.{NUMBER}+
 "<"             { return LT; }
 ">"             { return GT; }
 
-[\[\]\(\)\{\}\-\+\*/=,;\$@%] {
+[\[\]\(\)\{\}\-\+\*/=,;\$@%\\] {
                     /* These are valid one-character tokens */
                     return yytext[0];
                 }
