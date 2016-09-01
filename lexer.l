@@ -66,7 +66,7 @@ static Symbol* qw_separator(qw_info* qw, AST** ast) {
 
     qw->tok[qw->pos] = '\0';
     printf("QW: WORD [%d:%s]\n", qw->pos, qw->tok);
-    printf("QW: WS\n");
+    printf("QW: skip WS\n");
     qw->pos = 0;
 
     SymTab* symtab = (*ast)->symtab;
@@ -130,6 +130,7 @@ REAL        {NUMBER}+\.{NUMBER}*|{NUMBER}*\.{NUMBER}+
                     qw_begin(&qw, yytext[yyleng - 1]);
                     printf("INITIAL => QW [%c:%c]\n", qw.beg, qw.end);
                     BEGIN(QW);
+                    printf("QW: LPAREN\n");
                     return '(';
                 }
 <QW>{WS}+       {
@@ -140,7 +141,7 @@ REAL        {NUMBER}+\.{NUMBER}*|{NUMBER}*\.{NUMBER}+
                     }
                     Symbol* s = qw_separator(&qw, ast);
                     if (!s) {
-                        printf("QW: WS\n");
+                        printf("QW: skip WS\n");
                     } else {
                         qw.sep = 1;
                         yylval->symb = s;
@@ -157,7 +158,7 @@ REAL        {NUMBER}+\.{NUMBER}*|{NUMBER}*\.{NUMBER}+
                     if (yytext[0] == qw.end) {
                         Symbol* s = qw_separator(&qw, ast);
                         if (!s) {
-                            printf("QW: WS\n");
+                            printf("QW: skip WS\n");
                         } else {
                             yyless(0);
                             qw.sep = 1;
@@ -166,6 +167,7 @@ REAL        {NUMBER}+\.{NUMBER}*|{NUMBER}*\.{NUMBER}+
                         }
                         printf("QW => INITIAL\n");
                         BEGIN(INITIAL);
+                        printf("QW: RPAREN\n");
                         return ')';
                     } else {
                         qw_text(&qw, yytext[0]);
