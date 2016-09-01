@@ -80,12 +80,12 @@ const char* token_name(int token);
 %token <symb> IDENTIFIER FULL_IDENTIFIER
 
 /* Terminals for reserved words, with some precedende for dangling else */
-%token PACKAGE USE REQUIRE PARENT CONSTANT
+%token PACKAGE USE NO REQUIRE PARENT CONSTANT
 %token MY OUR LOCAL
 %token WHILE PRINT
 %token IF
 %nonassoc ELSE
-%token DOTDOT ARROW
+%token DOTDOT ARROW FAT_COMMA
 
 /* Terminals with a specific precedence */
 %left GT LT GE LE EQ NE
@@ -95,13 +95,13 @@ const char* token_name(int token);
 
 /* Nonterminals, with their corresponding types */
 %type <node> stmt expr stmt_list
-%type <node> simple_stmt block_stmt
+%type <node> simple_stmt block_stmt block_label
 %type <node> package_stmt use_stmt require_stmt decl_stmt
 %type <node> assign_stmt
-%type <node> symbol name
-%type <node> aref_reference href_reference
+%type <node> symbol name fat_comma_name
+%type <node> aref_reference href_reference take_reference
 %type <node> method_call invoker
-%type <node> variable scalar_variable array_variable hash_variable
+%type <node> variable scalar_variable array_variable hash_variable pointer_variable
 %type <node> initializer method_spec package_spec
 %type <node> symbol_list symbol_list_full
 %type <node> value value_list value_list_full value_interval
@@ -141,8 +141,14 @@ package_stmt
 
 use_stmt
     : USE symbol method_spec              { $$ = node_oper(USE, 2, $2, $3); }
+    | NO  symbol method_spec              { $$ = node_oper(NO, 2, $2, $3); }
     | USE PARENT package_spec             { $$ = node_oper(PARENT, 1, $3); }
-    | USE CONSTANT symbol ',' initializer { $$ = node_oper(CONSTANT, 2, $3, $5); }
+    | USE CONSTANT symbol comma initializer { $$ = node_oper(CONSTANT, 2, $3, $5); }
+    ;
+
+comma
+    : ','                                 { printf("<comma> COMMA\n"); }
+    | FAT_COMMA                           { printf("<comma> FAT_COMMA\n"); }
     ;
 
 require_stmt
@@ -200,13 +206,19 @@ assign_stmt
     ;
 
 block_stmt
-    : '{' stmt_list '}'                   { $$ = $2; }
+    : block_label '{' stmt_list '}'       { $$ = $3; }
+    ;
+
+block_label
+    :                                     { $$ = node_oper(';', 0); }
+    | IDENTIFIER                          { $$ = node_symb($1); }
     ;
 
 expr
     : symbol                              { $$ = $1; }
     | aref_reference                      { $$ = $1; }
     | href_reference                      { $$ = $1; }
+    | take_reference                      { $$ = $1; }
     | method_call                         { $$ = $1; }
     | '-' expr %prec UMINUS               { $$ = node_oper(UMINUS, 1, $2); }
     | expr '+' expr                       { $$ = node_oper('+', 2, $1, $3); }
@@ -253,8 +265,8 @@ value_interval
     ;
 
 method_call
-    : invoker ARROW IDENTIFIER               { $$ = $1; }
-    | invoker ARROW IDENTIFIER '(' ')'       { $$ = $1; }
+    : invoker ARROW IDENTIFIER            { $$ = $1; }
+    | invoker ARROW IDENTIFIER '(' ')'    { $$ = $1; }
     ;
 
 invoker
@@ -266,25 +278,32 @@ invoker
     ;
 
 aref_reference
-    : invoker ARROW '[' expr ']'   { $$ = $4; }
+    : invoker ARROW '[' expr ']'          { $$ = $4; }
+    ;
+
+take_reference
+    : '\\' scalar_variable                { $$ = $2; }
     ;
 
 href_reference
-    : invoker ARROW '{' expr '}'  { $$ = $4; }
+    : invoker ARROW '{' expr '}'          { $$ = $4; }
     ;
 
 value_list_full
-    : value_list                          { $$ = $1; }
-    | value_list ','                      { $$ = $1; }
+    : value_list                          { $$ = $1; printf("<value_list_full> value_list\n"); }
     ;
 
 value_list
-    : value                               { $$ = $1; }
-    | value_list ',' value                { $$ = node_oper(',', 2, $1, $3); }
+    :                                     { $$ = node_oper(';', 0); printf("<value_list> EMPTY\n"); }
+    | value                               { $$ = $1; printf("<value_list> value\n"); }
+    | value ',' value_list                { $$ = node_oper(',', 2, $1, $3); printf("<value_list> value COMMA value_list\n"); }
+    | value FAT_COMMA value_list          { $$ = node_oper(FAT_COMMA, 2, $1, $3); printf("<value_list> value FAT_COMMA value_list\n"); }
+    | name FAT_COMMA value_list           { $$ = node_oper(FAT_COMMA, 2, $1, $3); printf("<value_list> value FAT_COMMA value_list\n"); }
+    | fat_comma_name FAT_COMMA value_list { $$ = node_oper(FAT_COMMA, 2, $1, $3); printf("<value_list> value FAT_COMMA value_list\n"); }
     ;
 
 value
-    : init_single                         { $$ = $1; }
+    : init_single                         { $$ = $1; printf("<value> init_single\n"); }
     ;
 
 name
@@ -292,10 +311,15 @@ name
     | FULL_IDENTIFIER                     { $$ = node_symb($1); }
     ;
 
+fat_comma_name
+    : NO                                  { $$ = node_oper(';', 0); }
+    ;
+
 variable
     : scalar_variable                     { $$ = $1; }
     | array_variable                      { $$ = $1; }
     | hash_variable                       { $$ = $1; }
+    | pointer_variable                    { $$ = $1; }
     ;
 
 scalar_variable
@@ -308,6 +332,10 @@ array_variable
 
 hash_variable
     : '%' name                            { $$ = $2; }
+    ;
+
+pointer_variable
+    : '*' name                            { $$ = $2; }
     ;
 
 %%

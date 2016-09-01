@@ -11,6 +11,7 @@ static AST* create_and_populate_ast(void)
     } reserved[] = {
         { "package" , PACKAGE   },
         { "use"     , USE       },
+        { "no"      , NO        },
         { "parent"  , PARENT    },
         { "constant", CONSTANT  },
         { "require" , REQUIRE   },
