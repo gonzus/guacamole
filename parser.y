@@ -76,36 +76,40 @@ const char* token_name(int token);
 /* Terminals without precedence but with a specific value type */
 %token <vali> INTEGER
 %token <valr> REAL
-%token <vals> STRING
+%token <vals> STRING UNDEF
 %token <symb> IDENTIFIER FULL_IDENTIFIER
 
 /* Terminals for reserved words, with some precedende for dangling else */
-%token PACKAGE USE NO REQUIRE PARENT CONSTANT
-%token MY OUR LOCAL
-%token WHILE PRINT
+%token PACKAGE USE NO REQUIRE PARENT CONSTANT SUB
+%token MY OUR LOCAL DEFINED
+%token WHILE PRINT RETURN
 %token IF
 %nonassoc ELSE
-%token DOTDOT ARROW FAT_COMMA
+%token DOTDOT ARROW
 
 /* Terminals with a specific precedence */
-%left GT LT GE LE EQ NE
+%left ASS ASS_AND ASS_OR ASS_NULL_OR ASS_ADD ASS_SUB ASS_MUL ASS_DIV
+%left COMMA FAT_COMMA
+%left GT LT GE LE EQ NE        /* maybe nonassoc? */
+%left SGT SLT SGE SLE SEQ SNE  /* maybe nonassoc? */
+%left AND OR NULL_OR
 %left '+' '-'
 %left '*' '/'
 %nonassoc UMINUS
 
 /* Nonterminals, with their corresponding types */
-%type <node> stmt expr stmt_list
-%type <node> simple_stmt block_stmt block_label
-%type <node> package_stmt use_stmt require_stmt decl_stmt
-%type <node> assign_stmt
-%type <node> symbol name fat_comma_name
+%type <node> stmt stmt_list
+%type <node> simple_stmt block_stmt labeled_stmt sub_stmt
+%type <node> package_stmt use_stmt require_stmt
+%type <node> decl_stmt
+%type <node> name
 %type <node> aref_reference href_reference take_reference
+%type <node> aref_dereference href_dereference
 %type <node> method_call invoker
 %type <node> variable scalar_variable array_variable hash_variable pointer_variable
-%type <node> initializer method_spec package_spec
-%type <node> symbol_list symbol_list_full
-%type <node> value value_list value_list_full value_interval
-%type <node> init_single init_list init_aref init_href
+%type <node> method_spec package_spec
+%type <node> name_list name_list_full
+%type <node> expr expr_any labeled_expr
 
 /* Explicitly define starting rule */
 %start program
@@ -122,151 +126,158 @@ stmt_list
     ;
 
 stmt
-    : package_stmt ';'                    { $$ = $1; }
-    | use_stmt ';'                        { $$ = $1; }
-    | require_stmt ';'                    { $$ = $1; }
-    | decl_stmt ';'                       { $$ = $1; }
-    | simple_stmt ';'                     { $$ = $1; }
-    | simple_stmt IF expr ';'             { $$ = node_oper(IF, 2, $3, $1); }
-    | simple_stmt WHILE expr ';'          { $$ = node_oper(WHILE, 2, $3, $1); }
+    : ';'                                 { $$ = node_oper(';', 0); }
+    | package_stmt                        { $$ = $1; }
+    | use_stmt                            { $$ = $1; }
+    | require_stmt                        { $$ = $1; }
+    | decl_stmt                           { $$ = $1; }
+    | simple_stmt                         { $$ = $1; }
+    | simple_stmt IF expr                 { $$ = node_oper(IF, 2, $3, $1); }
+    | simple_stmt WHILE expr              { $$ = node_oper(WHILE, 2, $3, $1); }
+    | labeled_stmt                        { $$ = $1; }
     | block_stmt                          { $$ = $1; }
+    | sub_stmt                            { $$ = $1; }
     | WHILE '(' expr ')' block_stmt       { $$ = node_oper(WHILE, 2, $3, $5); }
     | IF '(' expr ')' block_stmt          { $$ = node_oper(IF, 2, $3, $5); }
     | IF '(' expr ')' block_stmt ELSE block_stmt    { $$ = node_oper(IF, 3, $3, $5, $7); }
     ;
 
 package_stmt
-    : PACKAGE symbol                      { $$ = node_oper(PACKAGE, 1, $2); }
+    : PACKAGE name                        { $$ = node_oper(PACKAGE, 1, $2); }
     ;
 
 use_stmt
-    : USE symbol method_spec              { $$ = node_oper(USE, 2, $2, $3); }
-    | NO  symbol method_spec              { $$ = node_oper(NO, 2, $2, $3); }
+    : USE name method_spec              { $$ = node_oper(USE, 2, $2, $3); }
+    | NO  name method_spec              { $$ = node_oper(NO, 2, $2, $3); }
     | USE PARENT package_spec             { $$ = node_oper(PARENT, 1, $3); }
-    | USE CONSTANT symbol comma initializer { $$ = node_oper(CONSTANT, 2, $3, $5); }
+    | USE CONSTANT name comma expr      { $$ = node_oper(CONSTANT, 2, $3, $5); }
     ;
 
 comma
-    : ','                                 { printf("<comma> COMMA\n"); }
+    : COMMA                               { printf("<comma> COMMA\n"); }
     | FAT_COMMA                           { printf("<comma> FAT_COMMA\n"); }
     ;
 
 require_stmt
-    : REQUIRE symbol                      { $$ = node_oper(REQUIRE, 1, $2); }
+    : REQUIRE name                       { $$ = node_oper(REQUIRE, 1, $2); }
     ;
 
 method_spec
     :                                     { $$ = node_oper(';', 0); }
     | '(' ')'                             { $$ = node_oper(';', 0); }
-    | symbol                              { $$ = $1; }
-    | '(' symbol_list_full ')'            { $$ = $2; }
+    | name                              { $$ = $1; }
+    | '(' name_list_full ')'            { $$ = $2; }
     ;
 
 package_spec
-    : symbol                              { $$ = $1; }
-    | '(' symbol_list_full ')'            { $$ = $2; }
-    ;
-
-symbol_list_full
-    : symbol_list                         { $$ = $1; }
-    | symbol_list ','                     { $$ = $1; }
-    ;
-
-symbol_list
-    : symbol                              { $$ = $1; }
-    | symbol_list ',' symbol              { $$ = node_oper(';', 2, $1, $3); }
-    ;
-
-symbol
-    : INTEGER                             { $$ = node_vali($1); }
-    | REAL                                { $$ = node_valr($1); }
+    : name                              { $$ = $1; }
     | STRING                              { $$ = node_vals($1); }
-    | variable                            { $$ = $1; }
-    | name                                { $$ = $1; }
+    | '(' name_list_full ')'            { $$ = $2; }
+    ;
+
+name_list_full
+    : name_list                         { $$ = $1; }
+    | name_list comma                   { $$ = $1; }
+    ;
+
+name_list
+    : name                              { $$ = $1; }
+    | name_list comma name              { $$ = node_oper(';', 2, $1, $3); }
     ;
 
 decl_stmt
-    : MY variable                         { $$ = node_oper(MY, 1, $2); }
-    | MY assign_stmt                      { $$ = node_oper(MY, 1, $2); }
-    | OUR variable                        { $$ = node_oper(OUR, 1, $2); }
-    | OUR assign_stmt                     { $$ = node_oper(OUR, 1, $2); }
-    | LOCAL variable                      { $$ = node_oper(LOCAL, 1, $2); }
-    | LOCAL assign_stmt                   { $$ = node_oper(LOCAL, 1, $2); }
+    : MY    expr                          { $$ = node_oper(MY, 1, $2); }
+    | OUR   expr                          { $$ = node_oper(OUR, 1, $2); }
+    | LOCAL expr                          { $$ = node_oper(LOCAL, 1, $2); }
     ;
 
 simple_stmt
-    :                                     { $$ = node_oper(';', 0); }
-    | assign_stmt                         { $$ = $1; }
-    | expr                                { $$ = $1; }
+    : expr                                { $$ = $1; }
     | PRINT expr                          { $$ = node_oper(PRINT, 1, $2); }
-    ;
-
-assign_stmt
-    : variable '=' initializer            { $$ = node_oper('=', 2, $1, $3); }
+    | RETURN expr                         { $$ = node_oper(RETURN, 1, $2); }
     ;
 
 block_stmt
-    : block_label '{' stmt_list '}'       { $$ = $3; }
+    : '{' stmt_list '}'                   { $$ = $2; }
     ;
 
-block_label
-    :                                     { $$ = node_oper(';', 0); }
-    | IDENTIFIER                          { $$ = node_symb($1); }
+labeled_stmt
+    : IDENTIFIER '{' stmt_list '}'        { $$ = $3; }
+    ;
+
+labeled_expr
+    : IDENTIFIER '{' expr '}' expr      { $$ = $3; }
+    ;
+
+sub_stmt
+    : SUB IDENTIFIER '{' stmt_list '}'    { $$ = node_oper(SUB, 2, node_symb($2), $4); }
     ;
 
 expr
-    : symbol                              { $$ = $1; }
+    : INTEGER                             { $$ = node_vali($1); }
+    | REAL                                { $$ = node_valr($1); }
+    | STRING                              { $$ = node_vals($1); }
+    | name                                { $$ = $1; }
+    | UNDEF                               { $$ = node_vals($1); }
+    | variable                            { $$ = $1; }
     | aref_reference                      { $$ = $1; }
     | href_reference                      { $$ = $1; }
     | take_reference                      { $$ = $1; }
+    | aref_dereference                    { $$ = $1; }
+    | href_dereference                    { $$ = $1; }
     | method_call                         { $$ = $1; }
     | '-' expr %prec UMINUS               { $$ = node_oper(UMINUS, 1, $2); }
     | expr '+' expr                       { $$ = node_oper('+', 2, $1, $3); }
     | expr '-' expr                       { $$ = node_oper('-', 2, $1, $3); }
     | expr '*' expr                       { $$ = node_oper('*', 2, $1, $3); }
     | expr '/' expr                       { $$ = node_oper('/', 2, $1, $3); }
+    | expr AND expr                       { $$ = node_oper(AND, 2, $1, $3); }
+    | expr OR expr                       { $$ = node_oper(OR, 2, $1, $3); }
+    | expr NULL_OR expr                       { $$ = node_oper(NULL_OR, 2, $1, $3); }
+    | expr ASS expr                       { $$ = node_oper(ASS, 2, $1, $3); }
+    | expr ASS_AND expr            { $$ = node_oper(ASS_AND, 2, $1, $3); }
+    | expr ASS_OR expr            { $$ = node_oper(ASS_OR, 2, $1, $3); }
+    | expr ASS_NULL_OR expr            { $$ = node_oper(ASS_NULL_OR, 2, $1, $3); }
+    | expr ASS_ADD expr            { $$ = node_oper(ASS_ADD, 2, $1, $3); }
+    | expr ASS_SUB expr            { $$ = node_oper(ASS_SUB, 2, $1, $3); }
+    | expr ASS_MUL expr            { $$ = node_oper(ASS_MUL, 2, $1, $3); }
+    | expr ASS_DIV expr            { $$ = node_oper(ASS_DIV, 2, $1, $3); }
+    | expr FAT_COMMA expr                     { $$ = node_oper(FAT_COMMA, 2, $1, $3); }
+    | expr_any FAT_COMMA expr                     { $$ = node_oper(FAT_COMMA, 2, $1, $3); }
+    | expr COMMA expr                     { $$ = node_oper(COMMA, 2, $1, $3); }
+    | expr COMMA                          { $$ = $1; }
+    | expr DOTDOT expr                    { $$ = node_oper(DOTDOT, 2, $1, $3); }
     | expr GT expr                        { $$ = node_oper(GT, 2, $1, $3); }
     | expr GE expr                        { $$ = node_oper(GE, 2, $1, $3); }
     | expr LT expr                        { $$ = node_oper(LT, 2, $1, $3); }
     | expr LE expr                        { $$ = node_oper(LE, 2, $1, $3); }
     | expr EQ expr                        { $$ = node_oper(EQ, 2, $1, $3); }
     | expr NE expr                        { $$ = node_oper(NE, 2, $1, $3); }
+    | expr SGT expr                        { $$ = node_oper(SGT, 2, $1, $3); }
+    | expr SGE expr                        { $$ = node_oper(SGE, 2, $1, $3); }
+    | expr SLT expr                        { $$ = node_oper(SLT, 2, $1, $3); }
+    | expr SLE expr                        { $$ = node_oper(SLE, 2, $1, $3); }
+    | expr SEQ expr                        { $$ = node_oper(SEQ, 2, $1, $3); }
+    | expr SNE expr                        { $$ = node_oper(SNE, 2, $1, $3); }
+    | '[' ']'                        { $$ = node_oper('@', 0); }
+    | '{' '}'                        { $$ = node_oper('%', 0); }
     | '(' expr ')'                        { $$ = $2; }
+    | '[' expr ']'                        { $$ = $2; }
+    | '{' expr '}'                        { $$ = $2; }
+    | labeled_expr                       { $$ = $1; }
+    | DEFINED expr                       { $$ = node_oper(DEFINED, 1, $2); }
     ;
 
-initializer
-    : init_single                         { $$ = $1; }
-    | init_list                           { $$ = $1; }
-    ;
-
-init_single
-    : expr                                { $$ = $1; }
-    | init_aref                           { $$ = $1; }
-    | init_href                           { $$ = $1; }
-    ;
-
-init_aref
-    : '[' value_list_full ']'             { $$ = node_oper('@', 1, $2); }
-    | '[' value_interval  ']'             { $$ = node_oper('@', 1, $2); }
-    ;
-
-init_href
-    : '{' value_list_full '}'             { $$ = node_oper('%', 1, $2); }
-    | '{' value_interval  '}'             { $$ = node_oper('%', 1, $2); }
-    ;
-
-init_list
-    : value_interval                      { $$ = $1; }
-    | '(' value_list_full  ')'            { $$ = $2; }
-    ;
-
-value_interval
-    : expr DOTDOT expr                    { $$ = node_oper(DOTDOT, 2, $1, $3); }
+expr_any
+    : NO                                  { $$ = node_vals("no"); }
     ;
 
 method_call
-    : invoker ARROW IDENTIFIER            { $$ = $1; }
-    | invoker ARROW IDENTIFIER '(' ')'    { $$ = $1; }
+    : invoker ARROW name            { $$ = $1; }
+    | invoker ARROW name '(' ')'    { $$ = $1; }
+    | invoker ARROW name '(' expr ')'    { $$ = $1; }
+    | name '(' ')'                        { $$ = $1; }
+    | name '(' expr ')'                   { $$ = $1; }
     ;
 
 invoker
@@ -289,30 +300,17 @@ href_reference
     : invoker ARROW '{' expr '}'          { $$ = $4; }
     ;
 
-value_list_full
-    : value_list                          { $$ = $1; printf("<value_list_full> value_list\n"); }
+aref_dereference
+    : '@' '{' expr '}'          { $$ = $3; }
     ;
 
-value_list
-    :                                     { $$ = node_oper(';', 0); printf("<value_list> EMPTY\n"); }
-    | value                               { $$ = $1; printf("<value_list> value\n"); }
-    | value ',' value_list                { $$ = node_oper(',', 2, $1, $3); printf("<value_list> value COMMA value_list\n"); }
-    | value FAT_COMMA value_list          { $$ = node_oper(FAT_COMMA, 2, $1, $3); printf("<value_list> value FAT_COMMA value_list\n"); }
-    | name FAT_COMMA value_list           { $$ = node_oper(FAT_COMMA, 2, $1, $3); printf("<value_list> value FAT_COMMA value_list\n"); }
-    | fat_comma_name FAT_COMMA value_list { $$ = node_oper(FAT_COMMA, 2, $1, $3); printf("<value_list> value FAT_COMMA value_list\n"); }
-    ;
-
-value
-    : init_single                         { $$ = $1; printf("<value> init_single\n"); }
+href_dereference
+    : '%' '{' expr '}'          { $$ = $3; }
     ;
 
 name
     : IDENTIFIER                          { $$ = node_symb($1); }
     | FULL_IDENTIFIER                     { $$ = node_symb($1); }
-    ;
-
-fat_comma_name
-    : NO                                  { $$ = node_oper(';', 0); }
     ;
 
 variable

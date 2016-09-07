@@ -15,6 +15,8 @@ static AST* create_and_populate_ast(void)
         { "parent"  , PARENT    },
         { "constant", CONSTANT  },
         { "require" , REQUIRE   },
+        { "undef"   , UNDEF     },
+        { "sub"     , SUB       },
         { "my"      , MY        },
         { "our"     , OUR       },
         { "local"   , LOCAL     },
@@ -22,6 +24,8 @@ static AST* create_and_populate_ast(void)
         { "while"   , WHILE     },
         { "if"      , IF        },
         { "else"    , ELSE      },
+        { "return"  , RETURN    },
+        { "defined" , DEFINED   },
     };
 
     AST* ast = ast_create();

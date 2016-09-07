@@ -137,7 +137,7 @@ REAL        {NUMBER}+\.{NUMBER}*|{NUMBER}*\.{NUMBER}+
                     if (qw.sep) {
                         qw.sep = 0;
                         printf("QW: COMMA\n");
-                        return ',';
+                        return COMMA;
                     }
                     Symbol* s = qw_separator(&qw, ast);
                     if (!s) {
@@ -153,7 +153,7 @@ REAL        {NUMBER}+\.{NUMBER}*|{NUMBER}*\.{NUMBER}+
                         yyless(0);
                         qw.sep = 0;
                         printf("QW: COMMA\n");
-                        return ',';
+                        return COMMA;
                     }
                     if (yytext[0] == qw.end) {
                         Symbol* s = qw_separator(&qw, ast);
@@ -178,8 +178,47 @@ REAL        {NUMBER}+\.{NUMBER}*|{NUMBER}*\.{NUMBER}+
 {INTEGER}       { sscanf(yytext, "%ld", &yylval->vali); return INTEGER; }
 {REAL}          { sscanf(yytext, "%lf", &yylval->valr); return REAL;    }
 
-\'[^\']*\'      { yylval->vals = yytext; return STRING; }
-\"[^\"]*\"      { yylval->vals = yytext; return STRING; }
+\'[^\']*\'      { printf("STRINGS<%s>\n", yytext); yylval->vals = yytext; return STRING; }
+\"[^\"]*\"      { printf("STRINGD<%s>\n", yytext); yylval->vals = yytext; return STRING; }
+
+"&&="           { return ASS_AND; }
+"||="           { return ASS_OR; }
+"//="           { return ASS_NULL_OR; }
+
+"&&"            { return AND; }
+"||"            { return OR; }
+"//"            { return NULL_OR; }
+
+"+="            { return ASS_ADD; }
+"-="            { return ASS_SUB; }
+"*="            { return ASS_MUL; }
+"/="            { return ASS_DIV; }
+
+"=>"            { return FAT_COMMA; }
+"->"            { printf("ARROW\n"); return ARROW; }
+"\.\."          { return DOTDOT; }
+
+"<="            { return LE; }
+">="            { return GE; }
+"=="            { return EQ; }
+"!="            { return NE; }
+"<"             { return LT; }
+">"             { return GT; }
+
+"le"            { return SLE; }
+"ge"            { return SGE; }
+"eq"            { return SEQ; }
+"ne"            { return SNE; }
+"lt"            { return SLT; }
+"gt"            { return SGT; }
+
+","             { return COMMA; }
+"="             { return ASS; }
+
+[\[\]\(\)\{\}\-\+\*/=;\$@%\\] {
+                    /* These are valid one-character tokens */
+                    return yytext[0];
+                }
 
 {IDENT}(::{IDENT})+ {
                     /* Fully qualified identifier => Foo::Bar::baz */
@@ -197,23 +236,8 @@ REAL        {NUMBER}+\.{NUMBER}*|{NUMBER}*\.{NUMBER}+
                     /* TODO symbol should be created in parser: $x, @x, %x */
                     Symbol* s = symtab_lookup(symtab, yytext, IDENTIFIER, 1);
                     yylval->symb = s;
+                    printf("%s<%s>\n", token_name(s->type), yytext);
                     return s->type;
-                }
-
-"=>"            { printf("FAT_COMMA\n"); return FAT_COMMA; }
-"->"            { printf("ARROW\n"); return ARROW; }
-"\.\."          { printf("DOTDOT\n"); return DOTDOT; }
-
-"<="            { return LE; }
-">="            { return GE; }
-"=="            { return EQ; }
-"!="            { return NE; }
-"<"             { return LT; }
-">"             { return GT; }
-
-[\[\]\(\)\{\}\-\+\*/=,;\$@%\\] {
-                    /* These are valid one-character tokens */
-                    return yytext[0];
                 }
 
 .               {
