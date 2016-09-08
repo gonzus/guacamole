@@ -26,6 +26,8 @@ static AST* create_and_populate_ast(void)
         { "else"    , ELSE      },
         { "return"  , RETURN    },
         { "defined" , DEFINED   },
+        { "keys"    , KEYS      },
+        { "values"  , VALUES    },
     };
 
     AST* ast = ast_create();

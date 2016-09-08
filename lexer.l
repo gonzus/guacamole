@@ -108,6 +108,7 @@ static Symbol* qw_separator(qw_info* qw, AST** ast) {
 %option noyywrap
 
 %x QW
+%x EQ_FOR
 
 /* some macros to makes things more readable */
 
@@ -123,7 +124,6 @@ REAL        {NUMBER}+\.{NUMBER}*|{NUMBER}*\.{NUMBER}+
 
 %%
 
-{WS}+           { /* Skip blanks */   }
 #.*             { /* Skip comments; TODO fix, this is valid: $x =~ s/#/ok/g; */ }
 
 "qw"{WS}*.      {
@@ -175,6 +175,19 @@ REAL        {NUMBER}+\.{NUMBER}*|{NUMBER}*\.{NUMBER}+
                     }
                 }
 
+^=for.*$      {
+                    printf("INITIAL => EQ_FOR [%s]\n", yytext);
+                    BEGIN(EQ_FOR);
+                }
+<EQ_FOR>^=cut{WS}*$ {
+                    printf("EQ_FOR => INITIAL\n");
+                    BEGIN(INITIAL);
+                }
+<EQ_FOR>{WS}+   { /* ignore */ }
+<EQ_FOR>.       { /* ignore */ }
+
+{WS}+           { /* Skip blanks */   }
+
 {INTEGER}       { sscanf(yytext, "%ld", &yylval->vali); return INTEGER; }
 {REAL}          { sscanf(yytext, "%lf", &yylval->valr); return REAL;    }
 
@@ -211,6 +224,9 @@ REAL        {NUMBER}+\.{NUMBER}*|{NUMBER}*\.{NUMBER}+
 "ne"            { return SNE; }
 "lt"            { return SLT; }
 "gt"            { return SGT; }
+
+"=~"            { return REQ; }
+"!~"            { return RNE; }
 
 ","             { return COMMA; }
 "="             { return ASS; }

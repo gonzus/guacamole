@@ -81,7 +81,8 @@ const char* token_name(int token);
 
 /* Terminals for reserved words, with some precedende for dangling else */
 %token PACKAGE USE NO REQUIRE PARENT CONSTANT SUB
-%token MY OUR LOCAL DEFINED
+%token MY OUR LOCAL
+%token DEFINED KEYS VALUES
 %token WHILE PRINT RETURN
 %token IF
 %nonassoc ELSE
@@ -92,6 +93,7 @@ const char* token_name(int token);
 %left COMMA FAT_COMMA
 %left GT LT GE LE EQ NE        /* maybe nonassoc? */
 %left SGT SLT SGE SLE SEQ SNE  /* maybe nonassoc? */
+%left REQ RNE                  /* maybe nonassoc? */
 %left AND OR NULL_OR
 %left '+' '-'
 %left '*' '/'
@@ -101,7 +103,6 @@ const char* token_name(int token);
 %type <node> stmt stmt_list
 %type <node> simple_stmt block_stmt labeled_stmt sub_stmt
 %type <node> package_stmt use_stmt require_stmt
-%type <node> decl_stmt
 %type <node> name
 %type <node> aref_reference href_reference take_reference
 %type <node> aref_dereference href_dereference
@@ -109,7 +110,7 @@ const char* token_name(int token);
 %type <node> variable scalar_variable array_variable hash_variable pointer_variable
 %type <node> method_spec package_spec
 %type <node> name_list name_list_full
-%type <node> expr expr_any labeled_expr
+%type <node> expr expr_any expr_labeled expr_decl expr_func
 
 /* Explicitly define starting rule */
 %start program
@@ -130,7 +131,6 @@ stmt
     | package_stmt                        { $$ = $1; }
     | use_stmt                            { $$ = $1; }
     | require_stmt                        { $$ = $1; }
-    | decl_stmt                           { $$ = $1; }
     | simple_stmt                         { $$ = $1; }
     | simple_stmt IF expr                 { $$ = node_oper(IF, 2, $3, $1); }
     | simple_stmt WHILE expr              { $$ = node_oper(WHILE, 2, $3, $1); }
@@ -185,7 +185,7 @@ name_list
     | name_list comma name              { $$ = node_oper(';', 2, $1, $3); }
     ;
 
-decl_stmt
+expr_decl
     : MY    expr                          { $$ = node_oper(MY, 1, $2); }
     | OUR   expr                          { $$ = node_oper(OUR, 1, $2); }
     | LOCAL expr                          { $$ = node_oper(LOCAL, 1, $2); }
@@ -205,7 +205,7 @@ labeled_stmt
     : IDENTIFIER '{' stmt_list '}'        { $$ = $3; }
     ;
 
-labeled_expr
+expr_labeled
     : IDENTIFIER '{' expr '}' expr      { $$ = $3; }
     ;
 
@@ -259,17 +259,25 @@ expr
     | expr SLE expr                        { $$ = node_oper(SLE, 2, $1, $3); }
     | expr SEQ expr                        { $$ = node_oper(SEQ, 2, $1, $3); }
     | expr SNE expr                        { $$ = node_oper(SNE, 2, $1, $3); }
+    | expr REQ expr                        { $$ = node_oper(REQ, 2, $1, $3); }
+    | expr RNE expr                        { $$ = node_oper(RNE, 2, $1, $3); }
     | '[' ']'                        { $$ = node_oper('@', 0); }
     | '{' '}'                        { $$ = node_oper('%', 0); }
     | '(' expr ')'                        { $$ = $2; }
     | '[' expr ']'                        { $$ = $2; }
     | '{' expr '}'                        { $$ = $2; }
-    | labeled_expr                       { $$ = $1; }
-    | DEFINED expr                       { $$ = node_oper(DEFINED, 1, $2); }
+    | expr_labeled                       { $$ = $1; }
+    | expr_decl                           { $$ = $1; }
+    | expr_func                           { $$ = $1; }
     ;
 
 expr_any
     : NO                                  { $$ = node_vals("no"); }
+    ;
+
+expr_func
+    : DEFINED expr                       { $$ = node_oper(DEFINED, 1, $2); }
+    | KEYS expr                        { $$ = node_oper(KEYS, 1, $2); }
     ;
 
 method_call
@@ -301,11 +309,13 @@ href_reference
     ;
 
 aref_dereference
-    : '@' '{' expr '}'          { $$ = $3; }
+    : '@' scalar_variable                 { $$ = $2; }
+    | '@' '{' expr '}'                    { $$ = $3; }
     ;
 
 href_dereference
-    : '%' '{' expr '}'          { $$ = $3; }
+    : '%' scalar_variable                 { $$ = $2; }
+    | '%' '{' expr '}'                    { $$ = $3; }
     ;
 
 name
