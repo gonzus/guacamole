@@ -1,5 +1,6 @@
 C_FILES    = \
 	gmem.c \
+	flags.c \
 	lexer.c \
 	parser.c \
 	oper.c \
@@ -46,6 +47,7 @@ lexer.o: lexer.c parser.h
 	$(CC) -c $(ALL_FLAGS) $(CFLAGS) $(CPPFLAGS) $(C_LEXER_FLAGS) $< -o $@
 
 gmem.o: gmem.c
+flags.o: flags.c
 parser.o: parser.c parser.h lexer.h
 oper.o: oper.c
 node.o: node.c

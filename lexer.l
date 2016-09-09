@@ -1,6 +1,7 @@
 %{
 
 #include <stdio.h>
+#include "flags.h"
 #include "ast.h"
 #include "symtab.h"
 #include "node.h"
@@ -108,6 +109,7 @@ static Symbol* qw_separator(qw_info* qw, AST** ast) {
 %option noyywrap
 
 %x QW
+%x RX
 %x EQ_FOR
 
 /* some macros to makes things more readable */
@@ -175,7 +177,7 @@ REAL        {NUMBER}+\.{NUMBER}*|{NUMBER}*\.{NUMBER}+
                     }
                 }
 
-^=for.*$      {
+^=for.*$        {
                     printf("INITIAL => EQ_FOR [%s]\n", yytext);
                     BEGIN(EQ_FOR);
                 }
@@ -183,6 +185,26 @@ REAL        {NUMBER}+\.{NUMBER}*|{NUMBER}*\.{NUMBER}+
                     printf("EQ_FOR => INITIAL\n");
                     BEGIN(INITIAL);
                 }
+<EQ_FOR>{WS}+   { /* ignore */ }
+<EQ_FOR>.       { /* ignore */ }
+
+"/"             {
+                    if (!grx()) {
+                        return '/';
+                    }
+                    printf("INITIAL => RX\n");
+                    BEGIN(RX);
+                }
+<RX>[^/]+       {
+                    printf("RX: [%s]\n", yytext);
+                }
+<RX>"/"         {
+                    printf("RX => INITIAL\n");
+                    BEGIN(INITIAL);
+                    srx(0);
+                    return REGEX;
+                }
+
 <EQ_FOR>{WS}+   { /* ignore */ }
 <EQ_FOR>.       { /* ignore */ }
 
@@ -211,13 +233,6 @@ REAL        {NUMBER}+\.{NUMBER}*|{NUMBER}*\.{NUMBER}+
 "->"            { printf("ARROW\n"); return ARROW; }
 "\.\."          { return DOTDOT; }
 
-"<="            { return LE; }
-">="            { return GE; }
-"=="            { return EQ; }
-"!="            { return NE; }
-"<"             { return LT; }
-">"             { return GT; }
-
 "le"            { return SLE; }
 "ge"            { return SGE; }
 "eq"            { return SEQ; }
@@ -225,13 +240,20 @@ REAL        {NUMBER}+\.{NUMBER}*|{NUMBER}*\.{NUMBER}+
 "lt"            { return SLT; }
 "gt"            { return SGT; }
 
-"=~"            { return REQ; }
-"!~"            { return RNE; }
+"=~"            { srx(1); return REQ; }
+"!~"            { srx(1); return RNE; }
+
+"<="            { return LE; }
+">="            { return GE; }
+"=="            { return EQ; }
+"!="            { return NE; }
+"<"             { return LT; }
+">"             { return GT; }
 
 ","             { return COMMA; }
 "="             { return ASS; }
 
-[\[\]\(\)\{\}\-\+\*/=;\$@%\\] {
+[\[\]\(\)\{\}\-\+\*\\/=;\$@%] {
                     /* These are valid one-character tokens */
                     return yytext[0];
                 }

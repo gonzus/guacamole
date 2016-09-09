@@ -1,5 +1,6 @@
 %{
 
+#include "flags.h"
 #include "ast.h"
 #include "node.h"
 #include "symtab.h"
@@ -76,7 +77,7 @@ const char* token_name(int token);
 /* Terminals without precedence but with a specific value type */
 %token <vali> INTEGER
 %token <valr> REAL
-%token <vals> STRING UNDEF
+%token <vals> STRING UNDEF REGEX
 %token <symb> IDENTIFIER FULL_IDENTIFIER
 
 /* Terminals for reserved words, with some precedende for dangling else */
@@ -90,10 +91,10 @@ const char* token_name(int token);
 
 /* Terminals with a specific precedence */
 %left ASS ASS_AND ASS_OR ASS_NULL_OR ASS_ADD ASS_SUB ASS_MUL ASS_DIV
+%left REQ RNE                  /* maybe nonassoc? */
 %left COMMA FAT_COMMA
 %left GT LT GE LE EQ NE        /* maybe nonassoc? */
 %left SGT SLT SGE SLE SEQ SNE  /* maybe nonassoc? */
-%left REQ RNE                  /* maybe nonassoc? */
 %left AND OR NULL_OR
 %left '+' '-'
 %left '*' '/'
@@ -259,8 +260,8 @@ expr
     | expr SLE expr                        { $$ = node_oper(SLE, 2, $1, $3); }
     | expr SEQ expr                        { $$ = node_oper(SEQ, 2, $1, $3); }
     | expr SNE expr                        { $$ = node_oper(SNE, 2, $1, $3); }
-    | expr REQ expr                        { $$ = node_oper(REQ, 2, $1, $3); }
-    | expr RNE expr                        { $$ = node_oper(RNE, 2, $1, $3); }
+    | expr REQ REGEX       { $$ = node_oper(REQ, 2, $1, node_vals($3)); }
+    | expr RNE REGEX       { $$ = node_oper(RNE, 2, $1, node_vals($3)); }
     | '[' ']'                        { $$ = node_oper('@', 0); }
     | '{' '}'                        { $$ = node_oper('%', 0); }
     | '(' expr ')'                        { $$ = $2; }
@@ -276,7 +277,7 @@ expr_any
     ;
 
 expr_func
-    : DEFINED expr                       { $$ = node_oper(DEFINED, 1, $2); }
+    : DEFINED expr                     { $$ = node_oper(DEFINED, 1, $2); }
     | KEYS expr                        { $$ = node_oper(KEYS, 1, $2); }
     ;
 
